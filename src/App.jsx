@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import referenceSprite from '../watermarked_img_14248841167161989406.png.png';
 
-const ALLOWED_EMAIL = (import.meta.env.VITE_ALLOWED_EMAIL || 'jrbrimble@aol.com').toLowerCase();
+function normalizeEmail(email = '') {
+  return email.trim().toLowerCase();
+}
+
+const ALLOWED_EMAIL = normalizeEmail(import.meta.env.VITE_ALLOWED_EMAIL || 'jrbrimble@aol.com');
 const STEP_GOAL = 20000;
 const CALORIE_LIMIT = 2000;
 const STRIDE_METERS = 0.78;
@@ -428,9 +432,10 @@ export default function App() {
 
     supabase.auth.getSession().then(({ data }) => {
       const nextSession = data.session;
-      if (nextSession?.user?.email?.toLowerCase() !== ALLOWED_EMAIL) {
+      if (nextSession && normalizeEmail(nextSession.user.email) !== ALLOWED_EMAIL) {
         supabase.auth.signOut();
         setSession(null);
+        setAuthError('Access denied. This cartridge is locked to jrbrimble@aol.com.');
       } else {
         setSession(nextSession);
       }
@@ -438,13 +443,20 @@ export default function App() {
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (nextSession?.user?.email?.toLowerCase() !== ALLOWED_EMAIL) {
+      if (!nextSession) {
+        setSession(null);
+        return;
+      }
+
+      if (normalizeEmail(nextSession.user.email) !== ALLOWED_EMAIL) {
         supabase.auth.signOut();
         setSession(null);
         setAuthError('Access denied. This cartridge is locked to jrbrimble@aol.com.');
-      } else {
-        setSession(nextSession);
+        return;
       }
+
+      setAuthError('');
+      setSession(nextSession);
     });
 
     return () => subscription.subscription.unsubscribe();
@@ -454,13 +466,13 @@ export default function App() {
     event.preventDefault();
     setAuthError('');
 
-    if (email.toLowerCase() !== ALLOWED_EMAIL) {
+    if (normalizeEmail(email) !== ALLOWED_EMAIL) {
       setAuthError('Access denied. Use the approved quest email.');
       return;
     }
 
     setAuthLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: normalizeEmail(email), password });
 
     if (error) {
       setAuthError(error.message);
@@ -473,6 +485,7 @@ export default function App() {
 
   async function handleSignOut() {
     await supabase.auth.signOut();
+    setAuthError('');
     setSession(null);
   }
 
