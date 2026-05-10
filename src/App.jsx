@@ -10,17 +10,51 @@ const ALLOWED_EMAIL = normalizeEmail(import.meta.env.VITE_ALLOWED_EMAIL || 'jrbr
 const STEP_GOAL = 20000;
 const CALORIE_LIMIT = 2000;
 const STRIDE_METERS = 0.78;
-const QUEST_START = new Date('2026-05-10T00:00:00');
-const DEADLINE = new Date('2026-06-20T23:59:59');
+const TIME_ZONE = 'Europe/London';
+const QUEST_START_DATE = '2026-05-10';
+const DEADLINE_DATE = '2026-06-20';
 
-function toDateInputValue(date = new Date()) {
-  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return localDate.toISOString().slice(0, 10);
+function getLondonDateValue(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const dateParts = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
 }
 
-function getDayDifference(start, end) {
+function dateValueToUtc(dateValue) {
+  const [year, month, day] = dateValue.split('-').map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+function getDateValueDifference(startDateValue, endDateValue) {
   const msPerDay = 1000 * 60 * 60 * 24;
-  return Math.ceil((end.getTime() - start.getTime()) / msPerDay);
+  return Math.round((dateValueToUtc(endDateValue) - dateValueToUtc(startDateValue)) / msPerDay);
+}
+
+function formatLondonDate(dateValue) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${dateValue}T12:00:00Z`));
+}
+
+function formatLondonDateTime(date = new Date()) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: TIME_ZONE,
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function clamp(value, min = 0, max = 100) {
@@ -31,14 +65,21 @@ function formatNumber(value) {
   return new Intl.NumberFormat('en-GB').format(value || 0);
 }
 
+function getEntryStatus(entry) {
+  if (!entry) return 'Awaiting log';
+  if (entry.steps >= STEP_GOAL && entry.calories < CALORIE_LIMIT) return 'Victory';
+  if (entry.calories > CALORIE_LIMIT) return 'Damage';
+  return 'Walking';
+}
+
 function AuthScreen({ error, onLogin, loading }) {
   const [email, setEmail] = useState(ALLOWED_EMAIL);
   const [password, setPassword] = useState('');
 
   return (
     <main className="min-h-screen bg-void px-4 py-6 text-white sm:px-6 lg:px-8">
-      <div className="crt-shell mx-auto flex min-h-[calc(100vh-3rem)] max-w-5xl items-center justify-center overflow-hidden rounded-[2rem] border-4 border-sonic/80 bg-night p-4 shadow-neon">
-        <div className="crt-content w-full max-w-2xl rounded-lg border-2 border-magenta/80 bg-black/80 p-6 text-center">
+      <div className="crt-shell mx-auto flex min-h-[calc(100vh-3rem)] max-w-5xl items-center justify-center overflow-hidden rounded-[2rem] border border-sonic/80 bg-night p-4 shadow-neon">
+        <div className="crt-content w-full max-w-2xl rounded-lg border border-magenta/80 bg-black/80 p-6 text-center shadow-[0_0_34px_rgba(255,56,209,0.22)]">
           <p className="mb-6 text-xs uppercase leading-6 text-sonic">16-Bit Fitness Cartridge</p>
           <h1 className="text-xl leading-10 text-white sm:text-3xl">Press Start</h1>
           <p className="mx-auto mt-5 max-w-xl text-[10px] leading-6 text-cyan-100">
@@ -46,7 +87,7 @@ function AuthScreen({ error, onLogin, loading }) {
           </p>
 
           {!isSupabaseConfigured && (
-            <div className="mt-6 border-2 border-ember bg-ember/10 p-4 text-left text-[10px] leading-5 text-amber-100">
+            <div className="mt-6 border border-ember bg-ember/10 p-4 text-left text-[10px] leading-5 text-amber-100">
               Supabase is not configured yet. Create a local .env file from .env.example, then restart the dev server.
             </div>
           )}
@@ -55,7 +96,7 @@ function AuthScreen({ error, onLogin, loading }) {
             <label className="block text-[10px] uppercase tracking-wide text-sonic">
               Player Email
               <input
-                className="mt-2 w-full border-2 border-sonic bg-void p-3 text-xs text-white outline-none focus:border-magenta"
+                className="console-input mt-2"
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -65,7 +106,7 @@ function AuthScreen({ error, onLogin, loading }) {
             <label className="block text-[10px] uppercase tracking-wide text-sonic">
               Password
               <input
-                className="mt-2 w-full border-2 border-sonic bg-void p-3 text-xs text-white outline-none focus:border-magenta"
+                className="console-input mt-2"
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -73,13 +114,9 @@ function AuthScreen({ error, onLogin, loading }) {
               />
             </label>
             {error && (
-              <p className="border-2 border-magenta bg-magenta/10 p-3 text-[10px] leading-5 text-pink-100">{error}</p>
+              <p className="border border-magenta bg-magenta/10 p-3 text-[10px] leading-5 text-pink-100">{error}</p>
             )}
-            <button
-              className="w-full border-2 border-white bg-genesis px-5 py-4 text-xs uppercase text-white shadow-danger transition hover:bg-magenta disabled:cursor-not-allowed disabled:opacity-50"
-              type="submit"
-              disabled={loading || !isSupabaseConfigured}
-            >
+            <button className="console-button w-full px-5 py-4 text-xs" type="submit" disabled={loading || !isSupabaseConfigured}>
               {loading ? 'Loading...' : 'Start Quest'}
             </button>
           </form>
@@ -91,10 +128,14 @@ function AuthScreen({ error, onLogin, loading }) {
 
 function PixelHero({ state }) {
   return (
-    <div className="relative mx-auto h-64 w-52">
+    <div className="relative mx-auto h-72 w-56">
       <div className={`pixel-hero ${state}`} aria-label={`Fitness hero sprite in ${state} state`}>
         <span className="sprite-head" />
+        <span className="sprite-eye sprite-eye-left" />
+        <span className="sprite-eye sprite-eye-right" />
+        <span className="sprite-brow" />
         <span className="sprite-beard" />
+        <span className="sprite-mouth" />
         <span className="sprite-torso" />
         <span className="sprite-belt" />
         <span className="sprite-shorts" />
@@ -109,29 +150,49 @@ function PixelHero({ state }) {
         <span className="sprite-boot sprite-boot-left" />
         <span className="sprite-boot sprite-boot-right" />
       </div>
-      {state === 'victory' && <div className="pixel-star">★</div>}
+      {state === 'victory' && <div className="pixel-star">*</div>}
       {state === 'damage' && <div className="damage-sweat">!</div>}
     </div>
   );
 }
 
-function ProgressBar({ label, value, target, dangerOver = false, kind }) {
+function ProgressBar({ label, value, target, dangerOver = false, kind, caption }) {
   const percent = clamp((value / target) * 100);
   const overLimit = dangerOver && value > target;
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-3 text-[10px] uppercase leading-5 text-cyan-100">
         <span>{label}</span>
         <span>
           {formatNumber(value)} / {formatNumber(target)}
         </span>
       </div>
-      <div className="h-6 border-2 border-white bg-black p-1">
+      <div className="h-8 border border-white/70 bg-black/90 p-1 shadow-[inset_0_0_12px_rgba(0,0,0,0.9)]">
         <div
-          className={`h-full transition-all duration-500 ${overLimit ? 'bg-magenta' : kind === 'xp' ? 'bg-sonic' : 'bg-ember'}`}
+          className={`h-full transition-all duration-500 ${
+            overLimit
+              ? 'bg-[linear-gradient(90deg,#ff38d1,#ff8a00)]'
+              : kind === 'xp'
+                ? 'bg-[linear-gradient(90deg,#0ff4ff,#6c2dff)]'
+                : 'bg-[linear-gradient(90deg,#36ff8f,#ff8a00)]'
+          }`}
           style={{ width: `${percent}%` }}
         />
       </div>
+      {caption && <p className="text-[9px] leading-5 text-cyan-100/80">{caption}</p>}
+    </div>
+  );
+}
+
+function MetricCard({ label, value, tone = 'cyan', detail }) {
+  const toneClass = tone === 'danger' ? 'text-magenta' : tone === 'warm' ? 'text-ember' : 'text-sonic';
+
+  return (
+    <div className="console-card p-4">
+      <p className="text-[9px] uppercase leading-5 text-cyan-100/80">{label}</p>
+      <p className={`mt-3 text-xl leading-8 ${toneClass}`}>{value}</p>
+      {detail && <p className="mt-2 text-[9px] leading-5 text-cyan-100/70">{detail}</p>}
     </div>
   );
 }
@@ -141,7 +202,7 @@ function QuestMap({ loggedDays, totalDays }) {
   const currentNode = clamp(loggedDays, 0, totalDays - 1);
 
   return (
-    <section className="border-2 border-sonic bg-black/65 p-4">
+    <section className="console-panel p-4">
       <div className="mb-4 flex items-center justify-between gap-4">
         <h2 className="text-xs uppercase text-sonic">Quest Map</h2>
         <span className="text-[10px] text-cyan-100">{loggedDays} days logged</span>
@@ -149,18 +210,18 @@ function QuestMap({ loggedDays, totalDays }) {
       <div className="grid grid-cols-7 gap-2 sm:grid-cols-14">
         {nodes.map((node) => (
           <div
-            className={`relative aspect-square border-2 text-[8px] ${
+            className={`relative aspect-square border text-[8px] ${
               node < loggedDays
-                ? 'border-sonic bg-sonic text-void'
+                ? 'border-sonic bg-sonic/90 text-void'
                 : node === currentNode
-                  ? 'border-magenta bg-magenta/30 text-white shadow-danger'
-                  : 'border-genesis bg-night text-cyan-100'
+                  ? 'border-magenta bg-magenta/35 text-white shadow-danger'
+                  : 'border-genesis/80 bg-night/80 text-cyan-100/80'
             }`}
             key={node}
             title={`Quest day ${node + 1}`}
           >
             <span className="absolute inset-0 flex items-center justify-center">{node + 1}</span>
-            {node === currentNode && <span className="absolute -right-1 -top-2 text-xs text-ember">◆</span>}
+            {node === currentNode && <span className="absolute -right-1 -top-2 text-xs text-ember">+</span>}
           </div>
         ))}
       </div>
@@ -168,38 +229,28 @@ function QuestMap({ loggedDays, totalDays }) {
   );
 }
 
-function ActivityForm({ currentEntry, onSave, saving }) {
-  const [activityDate, setActivityDate] = useState(toDateInputValue());
+function ActivityForm({ currentEntry, onSave, saving, todayDate }) {
   const [steps, setSteps] = useState(currentEntry?.steps || 0);
   const [calories, setCalories] = useState(currentEntry?.calories || 0);
 
   useEffect(() => {
-    if (currentEntry) {
-      setActivityDate(currentEntry.activity_date);
-      setSteps(currentEntry.steps);
-      setCalories(currentEntry.calories);
-    }
-  }, [currentEntry]);
+    setSteps(currentEntry?.steps || 0);
+    setCalories(currentEntry?.calories || 0);
+  }, [currentEntry, todayDate]);
 
   return (
     <form
-      className="grid gap-4 border-2 border-magenta bg-black/65 p-4 md:grid-cols-[1fr_1fr_1fr_auto]"
-      onSubmit={(event) => onSave(event, { activity_date: activityDate, steps, calories })}
+      className="console-panel grid gap-4 p-4 md:grid-cols-[1.1fr_1fr_1fr_auto] md:items-end"
+      onSubmit={(event) => onSave(event, { activity_date: todayDate, steps, calories })}
     >
-      <label className="text-[10px] uppercase leading-5 text-sonic">
-        Date
-        <input
-          className="mt-2 w-full border-2 border-sonic bg-void p-3 text-xs text-white outline-none focus:border-magenta"
-          type="date"
-          max="2026-06-20"
-          value={activityDate}
-          onChange={(event) => setActivityDate(event.target.value)}
-        />
-      </label>
+      <div className="console-readout min-h-[72px] p-3">
+        <p className="text-[9px] uppercase leading-5 text-magenta">London Date</p>
+        <p className="mt-2 text-[11px] leading-6 text-white">{formatLondonDate(todayDate)}</p>
+      </div>
       <label className="text-[10px] uppercase leading-5 text-sonic">
         Steps
         <input
-          className="mt-2 w-full border-2 border-sonic bg-void p-3 text-xs text-white outline-none focus:border-magenta"
+          className="console-input mt-2"
           type="number"
           min="0"
           value={steps}
@@ -209,50 +260,45 @@ function ActivityForm({ currentEntry, onSave, saving }) {
       <label className="text-[10px] uppercase leading-5 text-sonic">
         Calories
         <input
-          className="mt-2 w-full border-2 border-sonic bg-void p-3 text-xs text-white outline-none focus:border-magenta"
+          className="console-input mt-2"
           type="number"
           min="0"
           value={calories}
           onChange={(event) => setCalories(Number(event.target.value))}
         />
       </label>
-      <button
-        className="self-end border-2 border-white bg-genesis px-5 py-4 text-xs uppercase text-white transition hover:bg-magenta disabled:opacity-50"
-        type="submit"
-        disabled={saving}
-      >
-        {saving ? 'Saving' : 'Log Day'}
+      <button className="console-button h-[54px] px-5 text-xs" type="submit" disabled={saving}>
+        {saving ? 'Saving' : 'Log Today'}
       </button>
     </form>
   );
 }
 
 function ActivityLog({ entries }) {
+  const recentEntries = [...entries].reverse();
+
   return (
-    <section className="border-2 border-genesis bg-black/65 p-4">
-      <h2 className="mb-4 text-xs uppercase text-sonic">Save Files</h2>
+    <section className="console-panel p-4">
+      <h2 className="mb-4 text-xs uppercase text-sonic">Run History</h2>
       <div className="max-h-72 overflow-auto">
         <table className="w-full min-w-[620px] border-collapse text-left text-[10px] leading-5">
           <thead className="sticky top-0 bg-void text-sonic">
             <tr>
-              <th className="border-b-2 border-genesis p-3">Date</th>
-              <th className="border-b-2 border-genesis p-3">Steps</th>
-              <th className="border-b-2 border-genesis p-3">KM</th>
-              <th className="border-b-2 border-genesis p-3">Calories</th>
-              <th className="border-b-2 border-genesis p-3">State</th>
+              <th className="border-b border-genesis p-3">Date</th>
+              <th className="border-b border-genesis p-3">Steps</th>
+              <th className="border-b border-genesis p-3">KM</th>
+              <th className="border-b border-genesis p-3">Calories</th>
+              <th className="border-b border-genesis p-3">State</th>
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry) => {
+            {recentEntries.map((entry) => {
               const distance = ((entry.steps * STRIDE_METERS) / 1000).toFixed(2);
-              const status = entry.steps >= STEP_GOAL && entry.calories < CALORIE_LIMIT
-                ? 'Victory'
-                : entry.calories > CALORIE_LIMIT
-                  ? 'Damage'
-                  : 'Walking';
+              const status = getEntryStatus(entry);
+
               return (
                 <tr className="text-cyan-100" key={entry.id || entry.activity_date}>
-                  <td className="border-b border-genesis/50 p-3">{entry.activity_date}</td>
+                  <td className="border-b border-genesis/50 p-3">{formatLondonDate(entry.activity_date)}</td>
                   <td className="border-b border-genesis/50 p-3">{formatNumber(entry.steps)}</td>
                   <td className="border-b border-genesis/50 p-3">{distance}</td>
                   <td className="border-b border-genesis/50 p-3">{formatNumber(entry.calories)}</td>
@@ -279,6 +325,7 @@ function Dashboard({ session, onSignOut }) {
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
+  const [now, setNow] = useState(() => new Date());
 
   async function loadEntries() {
     setLoadingEntries(true);
@@ -299,17 +346,22 @@ function Dashboard({ session, onSignOut }) {
     loadEntries();
   }, []);
 
-  const todayEntry = entries.find((entry) => entry.activity_date === toDateInputValue()) || entries.at(-1);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const todayDate = getLondonDateValue(now);
+  const todayEntry = entries.find((entry) => entry.activity_date === todayDate);
   const activeSteps = todayEntry?.steps || 0;
   const activeCalories = todayEntry?.calories || 0;
   const distanceKm = ((activeSteps * STRIDE_METERS) / 1000).toFixed(2);
-  const daysRemaining = Math.max(0, getDayDifference(new Date(), DEADLINE));
-  const totalQuestDays = getDayDifference(QUEST_START, DEADLINE) + 1;
-  const spriteState = activeSteps >= STEP_GOAL && activeCalories < CALORIE_LIMIT
-    ? 'victory'
-    : activeCalories > CALORIE_LIMIT
-      ? 'damage'
-      : 'walking';
+  const stepPercent = Math.round((activeSteps / STEP_GOAL) * 100);
+  const daysRemaining = Math.max(0, getDateValueDifference(todayDate, DEADLINE_DATE) + 1);
+  const totalQuestDays = getDateValueDifference(QUEST_START_DATE, DEADLINE_DATE) + 1;
+  const status = getEntryStatus(todayEntry);
+  const spriteState = status === 'Victory' ? 'victory' : status === 'Damage' ? 'damage' : 'walking';
+  const calorieTone = activeCalories > CALORIE_LIMIT ? 'danger' : activeCalories > CALORIE_LIMIT * 0.8 ? 'warm' : 'cyan';
 
   async function handleSave(event, payload) {
     event.preventDefault();
@@ -333,7 +385,7 @@ function Dashboard({ session, onSignOut }) {
     if (error) {
       setNotice(error.message);
     } else {
-      setNotice('Quest day saved to Supabase.');
+      setNotice('Today saved to Supabase.');
       await loadEntries();
     }
     setSaving(false);
@@ -341,62 +393,81 @@ function Dashboard({ session, onSignOut }) {
 
   return (
     <main className="min-h-screen bg-void px-3 py-4 text-white sm:px-6 lg:px-8">
-      <div className="crt-shell mx-auto max-w-7xl overflow-hidden rounded-[2rem] border-4 border-sonic/80 bg-night p-3 shadow-neon sm:p-5">
+      <div className="crt-shell mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-sonic/80 bg-night p-3 shadow-neon sm:p-5">
         <div className="crt-content space-y-5">
-          <header className="grid gap-4 border-2 border-sonic bg-black/70 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+          <header className="console-panel grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
               <p className="text-[10px] uppercase leading-5 text-magenta">Mega Drive Fitness Quest</p>
-              <h1 className="mt-2 text-lg leading-9 text-white sm:text-2xl">June 20 Boss Run</h1>
+              <h1 className="mt-2 text-xl leading-9 text-white sm:text-3xl">June 20 Boss Run</h1>
+              <p className="mt-3 text-[10px] leading-5 text-cyan-100/80">
+                London clock: {formatLondonDateTime(now)}. Today is logged automatically.
+              </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3 text-[10px] leading-5 text-cyan-100">
-              <span className="border-2 border-genesis bg-void px-3 py-2">{daysRemaining} days remaining</span>
-              <span className="border-2 border-genesis bg-void px-3 py-2">{session.user.email}</span>
-              <button className="border-2 border-white bg-magenta px-3 py-2 text-white" onClick={onSignOut} type="button">
+            <div className="grid gap-3 text-[10px] leading-5 text-cyan-100 sm:grid-cols-[auto_auto_auto]">
+              <span className="console-readout px-3 py-2">{daysRemaining} days remaining</span>
+              <span className="console-readout px-3 py-2">{session.user.email}</span>
+              <button className="console-button px-3 py-2 text-[10px]" onClick={onSignOut} type="button">
                 Quit
               </button>
             </div>
           </header>
 
-          <section className="grid gap-5 lg:grid-cols-[340px_1fr]">
+          <section className="grid gap-5 xl:grid-cols-[420px_1fr]">
             <div className="space-y-5">
-              <div className="border-2 border-sonic bg-black/65 p-4 text-center">
+              <div className="character-stage p-5 text-center">
                 <PixelHero state={spriteState} />
-                <p className="mt-4 text-xs uppercase text-sonic">{spriteState} pose</p>
+                <div className="mx-auto mt-5 grid max-w-xs grid-cols-2 gap-3 text-left">
+                  <div className="console-readout p-3">
+                    <p className="text-[9px] uppercase text-cyan-100/70">Status</p>
+                    <p className="mt-2 text-[11px] leading-6 text-sonic">{status}</p>
+                  </div>
+                  <div className="console-readout p-3">
+                    <p className="text-[9px] uppercase text-cyan-100/70">Logged</p>
+                    <p className="mt-2 text-[11px] leading-6 text-sonic">{todayEntry ? 'Yes' : 'No'}</p>
+                  </div>
+                </div>
               </div>
-              <div className="border-2 border-genesis bg-black/65 p-4">
-                <h2 className="mb-3 text-xs uppercase text-sonic">Sprite Reference</h2>
+
+              <div className="console-panel p-4">
+                <h2 className="mb-3 text-xs uppercase text-sonic">Sprite Direction</h2>
                 <img
                   alt="Reference sprite sheet for the bald bearded walking character"
-                  className="aspect-video w-full border-2 border-genesis object-cover [image-rendering:pixelated]"
+                  className="aspect-video w-full border border-genesis/80 object-cover opacity-80 [image-rendering:pixelated]"
                   src={referenceSprite}
                 />
               </div>
             </div>
 
             <div className="space-y-5">
-              <ActivityForm currentEntry={todayEntry} onSave={handleSave} saving={saving} />
-              {notice && <p className="border-2 border-ember bg-ember/10 p-3 text-[10px] leading-5 text-amber-100">{notice}</p>}
+              <ActivityForm currentEntry={todayEntry} onSave={handleSave} saving={saving} todayDate={todayDate} />
+              {notice && <p className="console-panel border-ember/80 bg-ember/10 p-3 text-[10px] leading-5 text-amber-100">{notice}</p>}
 
               <section className="grid gap-4 md:grid-cols-3">
-                <div className="border-2 border-sonic bg-black/65 p-4">
-                  <p className="text-[10px] uppercase text-cyan-100">KM Walked</p>
-                  <p className="mt-3 text-2xl text-sonic">{distanceKm}</p>
-                </div>
-                <div className="border-2 border-sonic bg-black/65 p-4">
-                  <p className="text-[10px] uppercase text-cyan-100">Step Goal</p>
-                  <p className="mt-3 text-2xl text-sonic">{Math.round((activeSteps / STEP_GOAL) * 100)}%</p>
-                </div>
-                <div className="border-2 border-sonic bg-black/65 p-4">
-                  <p className="text-[10px] uppercase text-cyan-100">Calorie Limit</p>
-                  <p className={`mt-3 text-2xl ${activeCalories > CALORIE_LIMIT ? 'text-magenta' : 'text-sonic'}`}>
-                    {activeCalories > CALORIE_LIMIT ? 'OVER' : 'OK'}
-                  </p>
-                </div>
+                <MetricCard label="KM Walked" value={distanceKm} detail="0.78m stride estimate" />
+                <MetricCard label="Step Goal" value={`${stepPercent}%`} detail={`${formatNumber(STEP_GOAL - Math.min(activeSteps, STEP_GOAL))} left`} />
+                <MetricCard
+                  label="Calorie Limit"
+                  value={activeCalories > CALORIE_LIMIT ? 'Over' : 'OK'}
+                  tone={calorieTone}
+                  detail={`${formatNumber(Math.max(0, CALORIE_LIMIT - activeCalories))} remaining`}
+                />
               </section>
 
-              <section className="space-y-5 border-2 border-genesis bg-black/65 p-4">
-                <ProgressBar kind="xp" label="Steps XP" target={STEP_GOAL} value={activeSteps} />
-                <ProgressBar dangerOver label="Calories Health" target={CALORIE_LIMIT} value={activeCalories} />
+              <section className="console-panel space-y-6 p-4">
+                <ProgressBar
+                  kind="xp"
+                  label="Steps XP"
+                  target={STEP_GOAL}
+                  value={activeSteps}
+                  caption="Victory pose unlocks at 20,000 steps."
+                />
+                <ProgressBar
+                  dangerOver
+                  label="Calories Health"
+                  target={CALORIE_LIMIT}
+                  value={activeCalories}
+                  caption="Stay under 2,000 calories to avoid damage pose."
+                />
               </section>
 
               <QuestMap loggedDays={entries.length} totalDays={totalQuestDays} />
@@ -404,7 +475,7 @@ function Dashboard({ session, onSignOut }) {
           </section>
 
           {loadingEntries ? (
-            <div className="border-2 border-sonic bg-black/65 p-4 text-[10px] text-cyan-100">Loading Supabase save files...</div>
+            <div className="console-panel p-4 text-[10px] text-cyan-100">Loading Supabase save files...</div>
           ) : (
             <ActivityLog entries={entries} />
           )}
@@ -420,7 +491,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
 
   const isAllowedSession = useMemo(
-    () => session?.user?.email?.toLowerCase() === ALLOWED_EMAIL,
+    () => normalizeEmail(session?.user?.email) === ALLOWED_EMAIL,
     [session],
   );
 

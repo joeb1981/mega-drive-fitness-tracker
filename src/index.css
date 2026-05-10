@@ -17,9 +17,9 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    linear-gradient(135deg, rgba(108, 45, 255, 0.24), transparent 30%),
-    repeating-linear-gradient(90deg, rgba(15, 244, 255, 0.05) 0 2px, transparent 2px 16px),
-    #050014;
+    radial-gradient(circle at 50% -10%, rgba(15, 244, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 78% 16%, rgba(255, 56, 209, 0.16), transparent 24%),
+    linear-gradient(135deg, #070014 0%, #12002b 46%, #050014 100%);
   color: #fff;
   font-family: "Press Start 2P", monospace;
 }
@@ -35,7 +35,7 @@ button {
 
 .crt-shell {
   position: relative;
-  transform: perspective(1100px) rotateX(0.8deg);
+  transform: perspective(1200px) rotateX(0.45deg);
 }
 
 .crt-shell::before {
@@ -46,11 +46,11 @@ button {
   content: "";
   border-radius: inherit;
   background:
-    radial-gradient(circle at center, transparent 58%, rgba(0, 0, 0, 0.42) 100%),
-    linear-gradient(rgba(255, 255, 255, 0.08), transparent 8%, transparent 92%, rgba(255, 255, 255, 0.05));
+    radial-gradient(circle at center, transparent 62%, rgba(0, 0, 0, 0.48) 100%),
+    linear-gradient(rgba(255, 255, 255, 0.08), transparent 8%, transparent 92%, rgba(255, 255, 255, 0.06));
   box-shadow:
-    inset 0 0 42px rgba(0, 0, 0, 0.95),
-    inset 0 0 110px rgba(15, 244, 255, 0.18);
+    inset 0 0 46px rgba(0, 0, 0, 0.96),
+    inset 0 0 120px rgba(15, 244, 255, 0.16);
 }
 
 .crt-shell::after {
@@ -63,10 +63,10 @@ button {
   background:
     repeating-linear-gradient(
       0deg,
-      rgba(255, 255, 255, 0.06) 0,
-      rgba(255, 255, 255, 0.06) 1px,
-      rgba(0, 0, 0, 0.25) 2px,
-      rgba(0, 0, 0, 0.25) 4px
+      rgba(255, 255, 255, 0.045) 0,
+      rgba(255, 255, 255, 0.045) 1px,
+      rgba(0, 0, 0, 0.24) 2px,
+      rgba(0, 0, 0, 0.24) 4px
     );
   mix-blend-mode: screen;
   animation: flicker 2.6s infinite steps(1);
@@ -83,19 +83,117 @@ button {
   z-index: 50;
   pointer-events: none;
   content: "";
-  background: linear-gradient(transparent 40%, rgba(15, 244, 255, 0.08) 50%, transparent 60%);
-  animation: scan 7s linear infinite;
+  background: linear-gradient(transparent 42%, rgba(15, 244, 255, 0.055) 50%, transparent 58%);
+  animation: scan 8s linear infinite;
+}
+
+.console-panel {
+  border: 1px solid rgba(15, 244, 255, 0.64);
+  background:
+    linear-gradient(180deg, rgba(20, 5, 54, 0.78), rgba(3, 0, 12, 0.88)),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 5px);
+  box-shadow:
+    inset 0 0 0 1px rgba(108, 45, 255, 0.24),
+    0 0 22px rgba(15, 244, 255, 0.12);
+}
+
+.console-card,
+.console-readout {
+  border: 1px solid rgba(108, 45, 255, 0.8);
+  background:
+    linear-gradient(180deg, rgba(17, 4, 42, 0.92), rgba(0, 0, 0, 0.76)),
+    repeating-linear-gradient(0deg, rgba(15, 244, 255, 0.035) 0 1px, transparent 1px 6px);
+  box-shadow: inset 0 0 18px rgba(15, 244, 255, 0.08);
+}
+
+.console-input {
+  width: 100%;
+  border: 1px solid #0ff4ff;
+  background: rgba(5, 0, 20, 0.92);
+  padding: 0.95rem;
+  color: white;
+  font-size: 0.72rem;
+  line-height: 1.2rem;
+  outline: none;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.8);
+}
+
+.console-input:focus {
+  border-color: #ff38d1;
+  box-shadow:
+    inset 0 0 14px rgba(0, 0, 0, 0.8),
+    0 0 16px rgba(255, 56, 209, 0.38);
+}
+
+.console-button {
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: linear-gradient(180deg, #8b5cff, #5524df 50%, #341073);
+  color: white;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.24),
+    0 0 18px rgba(108, 45, 255, 0.46);
+  transition:
+    transform 140ms ease,
+    filter 140ms ease,
+    background 140ms ease;
+}
+
+.console-button:hover {
+  background: linear-gradient(180deg, #ff5bdd, #b7219c 54%, #5c0b60);
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.console-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+  opacity: 0.55;
+}
+
+.character-stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(15, 244, 255, 0.72);
+  background:
+    linear-gradient(180deg, rgba(12, 3, 34, 0.85), rgba(0, 0, 0, 0.9)),
+    linear-gradient(90deg, transparent 0 12%, rgba(15, 244, 255, 0.08) 12% 13%, transparent 13% 87%, rgba(15, 244, 255, 0.08) 87% 88%, transparent 88%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 5px);
+  box-shadow:
+    inset 0 0 36px rgba(108, 45, 255, 0.22),
+    0 0 22px rgba(15, 244, 255, 0.12);
+}
+
+.character-stage::before {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 122px;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(255, 56, 209, 0.75), transparent);
+}
+
+.character-stage::after {
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  bottom: 104px;
+  height: 26px;
+  content: "";
+  background: radial-gradient(ellipse at center, rgba(15, 244, 255, 0.22), transparent 70%);
 }
 
 .pixel-hero {
   position: absolute;
   left: 50%;
-  bottom: 14px;
-  width: 112px;
-  height: 210px;
+  bottom: 20px;
+  width: 132px;
+  height: 236px;
   transform: translateX(-50%);
   transform-origin: 50% 100%;
   image-rendering: pixelated;
+  filter: drop-shadow(0 12px 0 rgba(0, 0, 0, 0.42));
 }
 
 .pixel-hero.walking {
@@ -117,123 +215,166 @@ button {
 }
 
 .sprite-head {
-  left: 33px;
+  left: 40px;
   top: 0;
-  width: 50px;
-  height: 46px;
-  border-radius: 45% 45% 38% 38%;
+  z-index: 6;
+  width: 52px;
+  height: 50px;
+  border-radius: 46% 46% 38% 38%;
   background: #ff9b73;
-  box-shadow:
-    inset -8px -6px 0 #d46a50,
-    14px 16px 0 -10px #0b0714,
-    26px 16px 0 -10px #0b0714;
+  box-shadow: inset -8px -7px 0 #d46a50;
+}
+
+.sprite-eye {
+  top: 21px;
+  z-index: 8;
+  width: 8px;
+  height: 8px;
+  border-width: 0;
+  background: #160914;
+}
+
+.sprite-eye-left {
+  left: 53px;
+}
+
+.sprite-eye-right {
+  left: 72px;
+}
+
+.sprite-brow {
+  left: 49px;
+  top: 15px;
+  z-index: 9;
+  width: 38px;
+  height: 8px;
+  border-width: 0;
+  background: linear-gradient(90deg, #7b3a15 0 38%, transparent 38% 58%, #7b3a15 58%);
 }
 
 .sprite-beard {
-  left: 24px;
-  top: 33px;
-  width: 66px;
-  height: 76px;
+  left: 30px;
+  top: 34px;
+  z-index: 7;
+  width: 74px;
+  height: 82px;
   clip-path: polygon(12% 0, 88% 0, 78% 76%, 50% 100%, 20% 76%);
   background:
-    linear-gradient(90deg, transparent 0 18%, rgba(78, 38, 12, 0.55) 18% 24%, transparent 24% 45%, rgba(78, 38, 12, 0.55) 45% 52%, transparent 52%),
+    linear-gradient(90deg, transparent 0 18%, rgba(78, 38, 12, 0.58) 18% 24%, transparent 24% 45%, rgba(78, 38, 12, 0.58) 45% 52%, transparent 52%),
     #b76525;
 }
 
+.sprite-mouth {
+  left: 58px;
+  top: 67px;
+  z-index: 10;
+  width: 20px;
+  height: 8px;
+  border-width: 0;
+  background: #5b2b12;
+}
+
 .sprite-torso {
-  left: 28px;
-  top: 86px;
-  width: 60px;
-  height: 64px;
+  left: 34px;
+  top: 90px;
+  z-index: 5;
+  width: 66px;
+  height: 68px;
   background: #3f4733;
   box-shadow: inset 0 -14px 0 #151425;
 }
 
 .sprite-belt {
-  left: 25px;
-  top: 137px;
-  width: 66px;
+  left: 30px;
+  top: 145px;
+  z-index: 7;
+  width: 74px;
   height: 17px;
   background: #9fb0aa;
 }
 
 .sprite-shorts {
-  left: 27px;
-  top: 150px;
-  width: 62px;
-  height: 45px;
+  left: 33px;
+  top: 158px;
+  z-index: 4;
+  width: 68px;
+  height: 48px;
   background: #191628;
-  box-shadow: inset 26px 0 0 #211d36;
+  box-shadow: inset 29px 0 0 #211d36;
 }
 
 .sprite-arm {
-  top: 91px;
-  width: 24px;
-  height: 70px;
+  top: 96px;
+  z-index: 4;
+  width: 25px;
+  height: 76px;
   background: #ff8d70;
   transform-origin: top center;
 }
 
 .sprite-arm-left {
-  left: 2px;
-  transform: rotate(3deg);
+  left: 9px;
+  transform: rotate(5deg);
 }
 
 .sprite-arm-right {
-  right: 1px;
-  transform: rotate(-8deg);
+  right: 9px;
+  transform: rotate(-7deg);
 }
 
 .victory .sprite-arm-left {
-  top: 57px;
-  left: 0;
+  top: 60px;
+  left: 5px;
   transform: rotate(-145deg);
 }
 
 .victory .sprite-arm-right {
-  top: 56px;
-  right: 0;
+  top: 60px;
+  right: 5px;
   transform: rotate(145deg);
 }
 
 .damage .sprite-arm-right {
-  top: 42px;
-  right: 8px;
-  transform: rotate(115deg);
+  top: 46px;
+  right: 12px;
+  transform: rotate(116deg);
 }
 
 .sprite-watch {
-  right: -1px;
-  top: 135px;
-  width: 19px;
+  right: 4px;
+  top: 143px;
+  z-index: 9;
+  width: 20px;
   height: 18px;
   background: #ff8a00;
   box-shadow: inset 4px 4px 0 #0ff4ff;
 }
 
 .sprite-lead {
-  top: 50px;
-  width: 10px;
-  height: 96px;
+  top: 52px;
+  z-index: 8;
+  width: 9px;
+  height: 106px;
   border-width: 3px;
   border-radius: 10px;
 }
 
 .sprite-lead.orange {
-  left: 24px;
+  left: 31px;
   background: #ff8a00;
-  transform: rotate(-9deg);
+  transform: rotate(-8deg);
 }
 
 .sprite-lead.brown {
-  right: 24px;
+  right: 31px;
   background: #6d3a17;
-  transform: rotate(10deg);
+  transform: rotate(8deg);
 }
 
 .sprite-whistle {
-  left: 50px;
-  top: 105px;
+  left: 57px;
+  top: 112px;
+  z-index: 10;
   width: 18px;
   height: 24px;
   border-radius: 5px;
@@ -242,20 +383,21 @@ button {
 }
 
 .sprite-leg {
-  top: 188px;
+  top: 198px;
+  z-index: 3;
   width: 23px;
-  height: 46px;
+  height: 48px;
   background: #fb8065;
   transform-origin: top center;
 }
 
 .sprite-leg-left {
-  left: 30px;
+  left: 38px;
   transform: rotate(4deg);
 }
 
 .sprite-leg-right {
-  right: 28px;
+  right: 37px;
   transform: rotate(-4deg);
 }
 
@@ -268,18 +410,19 @@ button {
 }
 
 .sprite-boot {
-  top: 226px;
-  width: 37px;
+  top: 236px;
+  z-index: 4;
+  width: 40px;
   height: 22px;
   background: #3f2817;
 }
 
 .sprite-boot-left {
-  left: 20px;
+  left: 27px;
 }
 
 .sprite-boot-right {
-  right: 17px;
+  right: 25px;
 }
 
 .pixel-star {
@@ -289,15 +432,15 @@ button {
   z-index: 6;
   transform: translateX(-50%);
   color: #ffe66b;
-  font-size: 34px;
+  font-size: 42px;
   text-shadow: 0 0 10px #ff8a00;
   animation: pulseGlow 1s infinite;
 }
 
 .damage-sweat {
   position: absolute;
-  right: 45px;
-  top: 16px;
+  right: 48px;
+  top: 18px;
   z-index: 6;
   color: #0ff4ff;
   font-size: 28px;
@@ -308,5 +451,9 @@ button {
   .crt-shell {
     border-radius: 1.25rem;
     transform: none;
+  }
+
+  .console-input {
+    font-size: 0.64rem;
   }
 }
