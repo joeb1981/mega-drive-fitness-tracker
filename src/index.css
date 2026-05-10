@@ -1,0 +1,312 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #050014;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, rgba(108, 45, 255, 0.24), transparent 30%),
+    repeating-linear-gradient(90deg, rgba(15, 244, 255, 0.05) 0 2px, transparent 2px 16px),
+    #050014;
+  color: #fff;
+  font-family: "Press Start 2P", monospace;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.crt-shell {
+  position: relative;
+  transform: perspective(1100px) rotateX(0.8deg);
+}
+
+.crt-shell::before {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  content: "";
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at center, transparent 58%, rgba(0, 0, 0, 0.42) 100%),
+    linear-gradient(rgba(255, 255, 255, 0.08), transparent 8%, transparent 92%, rgba(255, 255, 255, 0.05));
+  box-shadow:
+    inset 0 0 42px rgba(0, 0, 0, 0.95),
+    inset 0 0 110px rgba(15, 244, 255, 0.18);
+}
+
+.crt-shell::after {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  content: "";
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.06) 0,
+      rgba(255, 255, 255, 0.06) 1px,
+      rgba(0, 0, 0, 0.25) 2px,
+      rgba(0, 0, 0, 0.25) 4px
+    );
+  mix-blend-mode: screen;
+  animation: flicker 2.6s infinite steps(1);
+}
+
+.crt-content {
+  position: relative;
+  z-index: 5;
+}
+
+.crt-content::before {
+  position: absolute;
+  inset: -50%;
+  z-index: 50;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(transparent 40%, rgba(15, 244, 255, 0.08) 50%, transparent 60%);
+  animation: scan 7s linear infinite;
+}
+
+.pixel-hero {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  width: 112px;
+  height: 210px;
+  transform: translateX(-50%);
+  transform-origin: 50% 100%;
+  image-rendering: pixelated;
+}
+
+.pixel-hero.walking {
+  animation: bob 0.8s infinite steps(2);
+}
+
+.pixel-hero.victory {
+  animation: victory 0.9s infinite steps(2);
+}
+
+.pixel-hero.damage {
+  animation: damage 0.55s infinite steps(2);
+}
+
+.pixel-hero span {
+  position: absolute;
+  display: block;
+  border: 4px solid #0b0714;
+}
+
+.sprite-head {
+  left: 33px;
+  top: 0;
+  width: 50px;
+  height: 46px;
+  border-radius: 45% 45% 38% 38%;
+  background: #ff9b73;
+  box-shadow:
+    inset -8px -6px 0 #d46a50,
+    14px 16px 0 -10px #0b0714,
+    26px 16px 0 -10px #0b0714;
+}
+
+.sprite-beard {
+  left: 24px;
+  top: 33px;
+  width: 66px;
+  height: 76px;
+  clip-path: polygon(12% 0, 88% 0, 78% 76%, 50% 100%, 20% 76%);
+  background:
+    linear-gradient(90deg, transparent 0 18%, rgba(78, 38, 12, 0.55) 18% 24%, transparent 24% 45%, rgba(78, 38, 12, 0.55) 45% 52%, transparent 52%),
+    #b76525;
+}
+
+.sprite-torso {
+  left: 28px;
+  top: 86px;
+  width: 60px;
+  height: 64px;
+  background: #3f4733;
+  box-shadow: inset 0 -14px 0 #151425;
+}
+
+.sprite-belt {
+  left: 25px;
+  top: 137px;
+  width: 66px;
+  height: 17px;
+  background: #9fb0aa;
+}
+
+.sprite-shorts {
+  left: 27px;
+  top: 150px;
+  width: 62px;
+  height: 45px;
+  background: #191628;
+  box-shadow: inset 26px 0 0 #211d36;
+}
+
+.sprite-arm {
+  top: 91px;
+  width: 24px;
+  height: 70px;
+  background: #ff8d70;
+  transform-origin: top center;
+}
+
+.sprite-arm-left {
+  left: 2px;
+  transform: rotate(3deg);
+}
+
+.sprite-arm-right {
+  right: 1px;
+  transform: rotate(-8deg);
+}
+
+.victory .sprite-arm-left {
+  top: 57px;
+  left: 0;
+  transform: rotate(-145deg);
+}
+
+.victory .sprite-arm-right {
+  top: 56px;
+  right: 0;
+  transform: rotate(145deg);
+}
+
+.damage .sprite-arm-right {
+  top: 42px;
+  right: 8px;
+  transform: rotate(115deg);
+}
+
+.sprite-watch {
+  right: -1px;
+  top: 135px;
+  width: 19px;
+  height: 18px;
+  background: #ff8a00;
+  box-shadow: inset 4px 4px 0 #0ff4ff;
+}
+
+.sprite-lead {
+  top: 50px;
+  width: 10px;
+  height: 96px;
+  border-width: 3px;
+  border-radius: 10px;
+}
+
+.sprite-lead.orange {
+  left: 24px;
+  background: #ff8a00;
+  transform: rotate(-9deg);
+}
+
+.sprite-lead.brown {
+  right: 24px;
+  background: #6d3a17;
+  transform: rotate(10deg);
+}
+
+.sprite-whistle {
+  left: 50px;
+  top: 105px;
+  width: 18px;
+  height: 24px;
+  border-radius: 5px;
+  background: #ff38d1;
+  box-shadow: inset -4px -4px 0 #9b1685;
+}
+
+.sprite-leg {
+  top: 188px;
+  width: 23px;
+  height: 46px;
+  background: #fb8065;
+  transform-origin: top center;
+}
+
+.sprite-leg-left {
+  left: 30px;
+  transform: rotate(4deg);
+}
+
+.sprite-leg-right {
+  right: 28px;
+  transform: rotate(-4deg);
+}
+
+.walking .sprite-leg-left {
+  transform: rotate(-14deg);
+}
+
+.walking .sprite-leg-right {
+  transform: rotate(14deg);
+}
+
+.sprite-boot {
+  top: 226px;
+  width: 37px;
+  height: 22px;
+  background: #3f2817;
+}
+
+.sprite-boot-left {
+  left: 20px;
+}
+
+.sprite-boot-right {
+  right: 17px;
+}
+
+.pixel-star {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  z-index: 6;
+  transform: translateX(-50%);
+  color: #ffe66b;
+  font-size: 34px;
+  text-shadow: 0 0 10px #ff8a00;
+  animation: pulseGlow 1s infinite;
+}
+
+.damage-sweat {
+  position: absolute;
+  right: 45px;
+  top: 16px;
+  z-index: 6;
+  color: #0ff4ff;
+  font-size: 28px;
+  animation: pulseGlow 0.8s infinite;
+}
+
+@media (max-width: 640px) {
+  .crt-shell {
+    border-radius: 1.25rem;
+    transform: none;
+  }
+}
