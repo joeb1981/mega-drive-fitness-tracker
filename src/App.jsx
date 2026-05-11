@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
-import referenceSprite from '../watermarked_img_14248841167161989406.png.png';
+import spriteSheet from '../watermarked_img_14248841167161989406.png.png';
 
 function normalizeEmail(email = '') {
   return email.trim().toLowerCase();
@@ -14,7 +14,7 @@ const TIME_ZONE = 'Europe/London';
 const QUEST_START_DATE = '2026-05-10';
 const DEADLINE_DATE = '2026-06-20';
 
-function getLondonDateValue(date = new Date()) {
+function getHalesowenDateValue(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: TIME_ZONE,
     year: 'numeric',
@@ -36,7 +36,7 @@ function getDateValueDifference(startDateValue, endDateValue) {
   return Math.round((dateValueToUtc(endDateValue) - dateValueToUtc(startDateValue)) / msPerDay);
 }
 
-function formatLondonDate(dateValue) {
+function formatQuestDate(dateValue) {
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: 'UTC',
     weekday: 'short',
@@ -46,7 +46,7 @@ function formatLondonDate(dateValue) {
   }).format(new Date(`${dateValue}T12:00:00Z`));
 }
 
-function formatLondonDateTime(date = new Date()) {
+function formatHalesowenTime(date = new Date()) {
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: TIME_ZONE,
     weekday: 'short',
@@ -65,6 +65,10 @@ function formatNumber(value) {
   return new Intl.NumberFormat('en-GB').format(value || 0);
 }
 
+function getDistanceKm(steps) {
+  return (steps * STRIDE_METERS) / 1000;
+}
+
 function getEntryStatus(entry) {
   if (!entry) return 'Awaiting log';
   if (entry.steps >= STEP_GOAL && entry.calories < CALORIE_LIMIT) return 'Victory';
@@ -80,7 +84,7 @@ function AuthScreen({ error, onLogin, loading }) {
     <main className="min-h-screen bg-void px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="crt-shell mx-auto flex min-h-[calc(100vh-3rem)] max-w-5xl items-center justify-center overflow-hidden rounded-[2rem] border border-sonic/80 bg-night p-4 shadow-neon">
         <div className="crt-content w-full max-w-2xl rounded-lg border border-magenta/80 bg-black/80 p-6 text-center shadow-[0_0_34px_rgba(255,56,209,0.22)]">
-          <p className="mb-6 text-xs uppercase leading-6 text-sonic">16-Bit Fitness Cartridge</p>
+          <p className="mb-6 text-xs uppercase leading-6 text-sonic">Mega Drive Calorie Quest</p>
           <h1 className="text-xl leading-10 text-white sm:text-3xl">Press Start</h1>
           <p className="mx-auto mt-5 max-w-xl text-[10px] leading-6 text-cyan-100">
             Supabase Auth gate active. This quest cartridge only accepts the approved player email.
@@ -126,32 +130,11 @@ function AuthScreen({ error, onLogin, loading }) {
   );
 }
 
-function PixelHero({ state }) {
+function SpriteHero({ state }) {
   return (
-    <div className="relative mx-auto h-72 w-56">
-      <div className={`pixel-hero ${state}`} aria-label={`Fitness hero sprite in ${state} state`}>
-        <span className="sprite-head" />
-        <span className="sprite-eye sprite-eye-left" />
-        <span className="sprite-eye sprite-eye-right" />
-        <span className="sprite-brow" />
-        <span className="sprite-beard" />
-        <span className="sprite-mouth" />
-        <span className="sprite-torso" />
-        <span className="sprite-belt" />
-        <span className="sprite-shorts" />
-        <span className="sprite-arm sprite-arm-left" />
-        <span className="sprite-arm sprite-arm-right" />
-        <span className="sprite-watch" />
-        <span className="sprite-lead orange" />
-        <span className="sprite-lead brown" />
-        <span className="sprite-whistle" />
-        <span className="sprite-leg sprite-leg-left" />
-        <span className="sprite-leg sprite-leg-right" />
-        <span className="sprite-boot sprite-boot-left" />
-        <span className="sprite-boot sprite-boot-right" />
-      </div>
-      {state === 'victory' && <div className="pixel-star">*</div>}
-      {state === 'damage' && <div className="damage-sweat">!</div>}
+    <div className="sprite-stage" aria-label={`Player sprite in ${state} state`}>
+      <div className={`sprite-sheet-player sprite-${state}`} style={{ backgroundImage: `url(${spriteSheet})` }} />
+      <div className="sprite-shadow" />
     </div>
   );
 }
@@ -197,33 +180,35 @@ function MetricCard({ label, value, tone = 'cyan', detail }) {
   );
 }
 
-function QuestMap({ loggedDays, totalDays }) {
-  const nodes = Array.from({ length: totalDays }, (_, index) => index);
-  const currentNode = clamp(loggedDays, 0, totalDays - 1);
+function QuestMap({ entries, totalDays }) {
+  const loggedDates = new Set(entries.map((entry) => entry.activity_date));
+  const currentNode = clamp(entries.length, 0, totalDays - 1);
+  const nodes = Array.from({ length: totalDays }, (_, index) => {
+    const nodeTime = dateValueToUtc(QUEST_START_DATE) + index * 24 * 60 * 60 * 1000;
+    return new Date(nodeTime).toISOString().slice(0, 10);
+  });
 
   return (
     <section className="console-panel p-4">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-xs uppercase text-sonic">Quest Map</h2>
-        <span className="text-[10px] text-cyan-100">{loggedDays} days logged</span>
+        <h2 className="text-xs uppercase text-sonic">Holiday Quest Map</h2>
+        <span className="text-[10px] text-cyan-100">{entries.length} days logged</span>
       </div>
-      <div className="grid grid-cols-7 gap-2 sm:grid-cols-14">
-        {nodes.map((node) => (
-          <div
-            className={`relative aspect-square border text-[8px] ${
-              node < loggedDays
-                ? 'border-sonic bg-sonic/90 text-void'
-                : node === currentNode
-                  ? 'border-magenta bg-magenta/35 text-white shadow-danger'
-                  : 'border-genesis/80 bg-night/80 text-cyan-100/80'
-            }`}
-            key={node}
-            title={`Quest day ${node + 1}`}
-          >
-            <span className="absolute inset-0 flex items-center justify-center">{node + 1}</span>
-            {node === currentNode && <span className="absolute -right-1 -top-2 text-xs text-ember">+</span>}
-          </div>
-        ))}
+      <div className="quest-road">
+        {nodes.map((dateValue, index) => {
+          const logged = loggedDates.has(dateValue);
+          const current = index === currentNode;
+
+          return (
+            <div
+              className={`quest-node ${logged ? 'quest-node-complete' : ''} ${current ? 'quest-node-current' : ''}`}
+              key={dateValue}
+              title={`${formatQuestDate(dateValue)}${logged ? ' logged' : ''}`}
+            >
+              <span>{index + 1}</span>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -240,12 +225,12 @@ function ActivityForm({ currentEntry, onSave, saving, todayDate }) {
 
   return (
     <form
-      className="console-panel grid gap-4 p-4 md:grid-cols-[1.1fr_1fr_1fr_auto] md:items-end"
+      className="console-panel grid gap-4 p-4 md:grid-cols-[1.15fr_1fr_1fr_auto] md:items-end"
       onSubmit={(event) => onSave(event, { activity_date: todayDate, steps, calories })}
     >
       <div className="console-readout min-h-[72px] p-3">
-        <p className="text-[9px] uppercase leading-5 text-magenta">London Date</p>
-        <p className="mt-2 text-[11px] leading-6 text-white">{formatLondonDate(todayDate)}</p>
+        <p className="text-[9px] uppercase leading-5 text-magenta">Today&apos;s Quest</p>
+        <p className="mt-2 text-[11px] leading-6 text-white">{formatQuestDate(todayDate)}</p>
       </div>
       <label className="text-[10px] uppercase leading-5 text-sonic">
         Steps
@@ -268,18 +253,57 @@ function ActivityForm({ currentEntry, onSave, saving, todayDate }) {
         />
       </label>
       <button className="console-button h-[54px] px-5 text-xs" type="submit" disabled={saving}>
-        {saving ? 'Saving' : 'Log Today'}
+        {saving ? 'Saving' : currentEntry ? 'Update' : 'Log Today'}
       </button>
     </form>
   );
 }
 
-function ActivityLog({ entries }) {
+function DayReview({ entries, selectedDate, onSelectDate }) {
+  const selectedEntry = entries.find((entry) => entry.activity_date === selectedDate);
+  const status = getEntryStatus(selectedEntry);
+  const steps = selectedEntry?.steps || 0;
+  const calories = selectedEntry?.calories || 0;
+
+  return (
+    <section className="console-panel p-4">
+      <div className="mb-4 grid gap-3 md:grid-cols-[1fr_220px] md:items-end">
+        <div>
+          <h2 className="text-xs uppercase text-sonic">Review Day</h2>
+          <p className="mt-2 text-[9px] leading-5 text-cyan-100/75">Check previous quest saves without changing today&apos;s log.</p>
+        </div>
+        <label className="text-[9px] uppercase leading-5 text-magenta">
+          Save File
+          <select className="console-select mt-2" value={selectedDate} onChange={(event) => onSelectDate(event.target.value)}>
+            {entries.map((entry) => (
+              <option key={entry.activity_date} value={entry.activity_date}>
+                {formatQuestDate(entry.activity_date)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {selectedEntry ? (
+        <div className="grid gap-4 md:grid-cols-4">
+          <MetricCard label="Date" value={formatQuestDate(selectedDate).replace(',', '')} />
+          <MetricCard label="Steps" value={formatNumber(steps)} detail={`${Math.max(0, STEP_GOAL - steps).toLocaleString('en-GB')} to target`} />
+          <MetricCard label="KM" value={getDistanceKm(steps).toFixed(2)} detail="Distance walked" />
+          <MetricCard label="Calories" value={formatNumber(calories)} tone={calories > CALORIE_LIMIT ? 'danger' : 'cyan'} detail={status} />
+        </div>
+      ) : (
+        <div className="console-readout p-4 text-[10px] leading-5 text-cyan-100">No previous days have been logged yet.</div>
+      )}
+    </section>
+  );
+}
+
+function ActivityLog({ entries, onSelectDate }) {
   const recentEntries = [...entries].reverse();
 
   return (
     <section className="console-panel p-4">
-      <h2 className="mb-4 text-xs uppercase text-sonic">Run History</h2>
+      <h2 className="mb-4 text-xs uppercase text-sonic">Save Files</h2>
       <div className="max-h-72 overflow-auto">
         <table className="w-full min-w-[620px] border-collapse text-left text-[10px] leading-5">
           <thead className="sticky top-0 bg-void text-sonic">
@@ -288,17 +312,21 @@ function ActivityLog({ entries }) {
               <th className="border-b border-genesis p-3">Steps</th>
               <th className="border-b border-genesis p-3">KM</th>
               <th className="border-b border-genesis p-3">Calories</th>
-              <th className="border-b border-genesis p-3">State</th>
+              <th className="border-b border-genesis p-3">Result</th>
             </tr>
           </thead>
           <tbody>
             {recentEntries.map((entry) => {
-              const distance = ((entry.steps * STRIDE_METERS) / 1000).toFixed(2);
+              const distance = getDistanceKm(entry.steps).toFixed(2);
               const status = getEntryStatus(entry);
 
               return (
-                <tr className="text-cyan-100" key={entry.id || entry.activity_date}>
-                  <td className="border-b border-genesis/50 p-3">{formatLondonDate(entry.activity_date)}</td>
+                <tr
+                  className="cursor-pointer text-cyan-100 transition hover:bg-sonic/10"
+                  key={entry.id || entry.activity_date}
+                  onClick={() => onSelectDate(entry.activity_date)}
+                >
+                  <td className="border-b border-genesis/50 p-3">{formatQuestDate(entry.activity_date)}</td>
                   <td className="border-b border-genesis/50 p-3">{formatNumber(entry.steps)}</td>
                   <td className="border-b border-genesis/50 p-3">{distance}</td>
                   <td className="border-b border-genesis/50 p-3">{formatNumber(entry.calories)}</td>
@@ -322,6 +350,7 @@ function ActivityLog({ entries }) {
 
 function Dashboard({ session, onSignOut }) {
   const [entries, setEntries] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('');
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
@@ -337,7 +366,9 @@ function Dashboard({ session, onSignOut }) {
     if (error) {
       setNotice(error.message);
     } else {
-      setEntries(data || []);
+      const nextEntries = data || [];
+      setEntries(nextEntries);
+      setSelectedDate((currentDate) => currentDate || nextEntries.at(-1)?.activity_date || '');
     }
     setLoadingEntries(false);
   }
@@ -351,17 +382,21 @@ function Dashboard({ session, onSignOut }) {
     return () => window.clearInterval(timer);
   }, []);
 
-  const todayDate = getLondonDateValue(now);
+  const todayDate = getHalesowenDateValue(now);
   const todayEntry = entries.find((entry) => entry.activity_date === todayDate);
   const activeSteps = todayEntry?.steps || 0;
   const activeCalories = todayEntry?.calories || 0;
-  const distanceKm = ((activeSteps * STRIDE_METERS) / 1000).toFixed(2);
+  const distanceKm = getDistanceKm(activeSteps).toFixed(2);
   const stepPercent = Math.round((activeSteps / STEP_GOAL) * 100);
   const daysRemaining = Math.max(0, getDateValueDifference(todayDate, DEADLINE_DATE) + 1);
   const totalQuestDays = getDateValueDifference(QUEST_START_DATE, DEADLINE_DATE) + 1;
   const status = getEntryStatus(todayEntry);
   const spriteState = status === 'Victory' ? 'victory' : status === 'Damage' ? 'damage' : 'walking';
   const calorieTone = activeCalories > CALORIE_LIMIT ? 'danger' : activeCalories > CALORIE_LIMIT * 0.8 ? 'warm' : 'cyan';
+  const totalSteps = entries.reduce((sum, entry) => sum + entry.steps, 0);
+  const totalCalories = entries.reduce((sum, entry) => sum + entry.calories, 0);
+  const totalKm = getDistanceKm(totalSteps);
+  const victoryDays = entries.filter((entry) => getEntryStatus(entry) === 'Victory').length;
 
   async function handleSave(event, payload) {
     event.preventDefault();
@@ -385,7 +420,8 @@ function Dashboard({ session, onSignOut }) {
     if (error) {
       setNotice(error.message);
     } else {
-      setNotice('Today saved to Supabase.');
+      setNotice('Today saved. Quest progress updated.');
+      setSelectedDate(payload.activity_date);
       await loadEntries();
     }
     setSaving(false);
@@ -397,10 +433,10 @@ function Dashboard({ session, onSignOut }) {
         <div className="crt-content space-y-5">
           <header className="console-panel grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
-              <p className="text-[10px] uppercase leading-5 text-magenta">Mega Drive Fitness Quest</p>
-              <h1 className="mt-2 text-xl leading-9 text-white sm:text-3xl">June 20 Boss Run</h1>
+              <p className="text-[10px] uppercase leading-5 text-magenta">Mega Drive Calorie Quest</p>
+              <h1 className="mt-2 text-xl leading-9 text-white sm:text-3xl">June 20th Holiday Countdown</h1>
               <p className="mt-3 text-[10px] leading-5 text-cyan-100/80">
-                London clock: {formatLondonDateTime(now)}. Today is logged automatically.
+                Halesowen Clock: {formatHalesowenTime(now)}. Today is logged automatically.
               </p>
             </div>
             <div className="grid gap-3 text-[10px] leading-5 text-cyan-100 sm:grid-cols-[auto_auto_auto]">
@@ -415,27 +451,28 @@ function Dashboard({ session, onSignOut }) {
           <section className="grid gap-5 xl:grid-cols-[420px_1fr]">
             <div className="space-y-5">
               <div className="character-stage p-5 text-center">
-                <PixelHero state={spriteState} />
+                <SpriteHero state={spriteState} />
                 <div className="mx-auto mt-5 grid max-w-xs grid-cols-2 gap-3 text-left">
                   <div className="console-readout p-3">
                     <p className="text-[9px] uppercase text-cyan-100/70">Status</p>
                     <p className="mt-2 text-[11px] leading-6 text-sonic">{status}</p>
                   </div>
                   <div className="console-readout p-3">
-                    <p className="text-[9px] uppercase text-cyan-100/70">Logged</p>
-                    <p className="mt-2 text-[11px] leading-6 text-sonic">{todayEntry ? 'Yes' : 'No'}</p>
+                    <p className="text-[9px] uppercase text-cyan-100/70">Today</p>
+                    <p className="mt-2 text-[11px] leading-6 text-sonic">{todayEntry ? 'Saved' : 'Open'}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="console-panel p-4">
-                <h2 className="mb-3 text-xs uppercase text-sonic">Sprite Direction</h2>
-                <img
-                  alt="Reference sprite sheet for the bald bearded walking character"
-                  className="aspect-video w-full border border-genesis/80 object-cover opacity-80 [image-rendering:pixelated]"
-                  src={referenceSprite}
-                />
-              </div>
+              <section className="console-panel space-y-4 p-4">
+                <h2 className="text-xs uppercase text-sonic">Campaign Totals</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  <MetricCard label="Total Steps" value={formatNumber(totalSteps)} />
+                  <MetricCard label="Total KM" value={totalKm.toFixed(2)} />
+                  <MetricCard label="Logged Days" value={formatNumber(entries.length)} />
+                  <MetricCard label="Victory Days" value={formatNumber(victoryDays)} detail={`${formatNumber(totalCalories)} calories logged`} />
+                </div>
+              </section>
             </div>
 
             <div className="space-y-5">
@@ -443,7 +480,7 @@ function Dashboard({ session, onSignOut }) {
               {notice && <p className="console-panel border-ember/80 bg-ember/10 p-3 text-[10px] leading-5 text-amber-100">{notice}</p>}
 
               <section className="grid gap-4 md:grid-cols-3">
-                <MetricCard label="KM Walked" value={distanceKm} detail="0.78m stride estimate" />
+                <MetricCard label="Today KM" value={distanceKm} detail="0.78m stride estimate" />
                 <MetricCard label="Step Goal" value={`${stepPercent}%`} detail={`${formatNumber(STEP_GOAL - Math.min(activeSteps, STEP_GOAL))} left`} />
                 <MetricCard
                   label="Calorie Limit"
@@ -456,28 +493,31 @@ function Dashboard({ session, onSignOut }) {
               <section className="console-panel space-y-6 p-4">
                 <ProgressBar
                   kind="xp"
-                  label="Steps XP"
+                  label="Daily Steps XP"
                   target={STEP_GOAL}
                   value={activeSteps}
-                  caption="Victory pose unlocks at 20,000 steps."
+                  caption="Hit 20,000 steps to clear today's stage."
                 />
                 <ProgressBar
                   dangerOver
                   label="Calories Health"
                   target={CALORIE_LIMIT}
                   value={activeCalories}
-                  caption="Stay under 2,000 calories to avoid damage pose."
+                  caption="Stay under 2,000 calories to protect your health bar."
                 />
               </section>
 
-              <QuestMap loggedDays={entries.length} totalDays={totalQuestDays} />
+              <QuestMap entries={entries} totalDays={totalQuestDays} />
             </div>
           </section>
 
           {loadingEntries ? (
             <div className="console-panel p-4 text-[10px] text-cyan-100">Loading Supabase save files...</div>
           ) : (
-            <ActivityLog entries={entries} />
+            <>
+              <DayReview entries={entries} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+              <ActivityLog entries={entries} onSelectDate={setSelectedDate} />
+            </>
           )}
         </div>
       </div>

@@ -125,6 +125,22 @@ button {
     0 0 16px rgba(255, 56, 209, 0.38);
 }
 
+.console-select {
+  width: 100%;
+  border: 1px solid #0ff4ff;
+  background: rgba(5, 0, 20, 0.96);
+  padding: 0.8rem;
+  color: white;
+  font-size: 0.62rem;
+  line-height: 1.1rem;
+  outline: none;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.8);
+}
+
+.console-select:focus {
+  border-color: #ff38d1;
+}
+
 .console-button {
   border: 1px solid rgba(255, 255, 255, 0.9);
   background: linear-gradient(180deg, #8b5cff, #5524df 50%, #341073);
@@ -182,6 +198,113 @@ button {
   height: 26px;
   content: "";
   background: radial-gradient(ellipse at center, rgba(15, 244, 255, 0.22), transparent 70%);
+}
+
+.sprite-stage {
+  position: relative;
+  height: 350px;
+  overflow: hidden;
+}
+
+.sprite-sheet-player {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 3;
+  width: 152px;
+  height: 322px;
+  background-repeat: no-repeat;
+  background-size: 1536px 864px;
+  image-rendering: pixelated;
+  transform: translateX(-50%) scale(1.04);
+  transform-origin: 50% 100%;
+  filter:
+    drop-shadow(0 0 3px rgba(15, 244, 255, 0.42))
+    drop-shadow(0 12px 0 rgba(0, 0, 0, 0.3));
+}
+
+.sprite-walking {
+  background-position: -34px -52px;
+  animation: spriteWalk 0.9s infinite steps(1);
+}
+
+.sprite-victory {
+  width: 188px;
+  height: 340px;
+  background-position: -946px -24px;
+  animation: spriteVictory 0.8s infinite steps(2);
+}
+
+.sprite-damage {
+  width: 170px;
+  height: 332px;
+  background-position: -1292px -50px;
+  animation: spriteDamage 0.7s infinite steps(2);
+}
+
+.sprite-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 1;
+  width: 190px;
+  height: 28px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.7), transparent 70%);
+}
+
+.quest-road {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(34px, 1fr));
+  gap: 0.55rem;
+}
+
+.quest-node {
+  position: relative;
+  display: grid;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(108, 45, 255, 0.82);
+  background:
+    linear-gradient(180deg, rgba(28, 9, 68, 0.92), rgba(5, 0, 20, 0.92)),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 5px);
+  color: rgba(207, 255, 255, 0.78);
+  font-size: 0.48rem;
+}
+
+.quest-node::after {
+  position: absolute;
+  right: -0.48rem;
+  width: 0.48rem;
+  height: 1px;
+  content: "";
+  background: rgba(15, 244, 255, 0.42);
+}
+
+.quest-node:nth-child(7n)::after {
+  display: none;
+}
+
+.quest-node-complete {
+  border-color: rgba(15, 244, 255, 0.95);
+  background: linear-gradient(180deg, rgba(15, 244, 255, 0.95), rgba(29, 143, 205, 0.9));
+  color: #050014;
+  box-shadow: 0 0 16px rgba(15, 244, 255, 0.28);
+}
+
+.quest-node-current {
+  border-color: #ff38d1;
+  background: linear-gradient(180deg, rgba(255, 56, 209, 0.54), rgba(108, 45, 255, 0.52));
+  color: white;
+  box-shadow: 0 0 18px rgba(255, 56, 209, 0.5);
+}
+
+.quest-node-current::before {
+  position: absolute;
+  top: -0.85rem;
+  content: "P1";
+  color: #ff8a00;
+  font-size: 0.45rem;
 }
 
 .pixel-hero {
@@ -447,6 +570,43 @@ button {
   animation: pulseGlow 0.8s infinite;
 }
 
+@keyframes spriteWalk {
+  0%,
+  100% {
+    background-position: -34px -52px;
+  }
+
+  33% {
+    background-position: -332px -58px;
+  }
+
+  66% {
+    background-position: -606px -60px;
+  }
+}
+
+@keyframes spriteVictory {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(-7px) scale(1.04);
+  }
+
+  50% {
+    transform: translateX(-50%) translateY(0) scale(1.01);
+  }
+}
+
+@keyframes spriteDamage {
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(-2deg) scale(1.02);
+  }
+
+  50% {
+    transform: translateX(calc(-50% - 4px)) rotate(2deg) scale(1.02);
+  }
+}
+
 @media (max-width: 640px) {
   .crt-shell {
     border-radius: 1.25rem;
@@ -455,5 +615,17 @@ button {
 
   .console-input {
     font-size: 0.64rem;
+  }
+
+  .quest-road {
+    grid-template-columns: repeat(6, minmax(30px, 1fr));
+  }
+
+  .quest-node:nth-child(7n)::after {
+    display: block;
+  }
+
+  .quest-node:nth-child(6n)::after {
+    display: none;
   }
 }

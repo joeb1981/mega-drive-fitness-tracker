@@ -1,4 +1,4 @@
-# Mega Drive Fitness Quest
+# Mega Drive Calorie Quest
 
 A single-page React fitness tracker with a 16-bit Sega Mega Drive inspired CRT interface, Supabase Auth, Supabase persistence, and Vercel deployment instructions.
 
@@ -13,7 +13,7 @@ The live app is locked to `jrbrimble@aol.com`. The password should be created in
 - Vercel deployment connected to a GitHub repository.
 - Daily goals: `20,000` steps and fewer than `2,000` calories.
 - Distance formula: `(steps * 0.78 metres) / 1000`.
-- Daily rows are logged automatically against today's date in the `Europe/London` timezone.
+- Daily rows are logged automatically against today's date using the Halesowen/London timezone.
 - Deadline countdown to `20 June 2026`.
 
 ## 1. Install And Run Locally
