@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
-import spriteSheet from '../watermarked_img_14248841167161989406.png.png';
+import playerDamage from './assets/player-damage.png';
+import playerVictory from './assets/player-victory.png';
+import playerWalkStrip from './assets/player-walk-strip.png';
 
 function normalizeEmail(email = '') {
   return email.trim().toLowerCase();
@@ -11,7 +13,7 @@ const STEP_GOAL = 20000;
 const CALORIE_LIMIT = 2000;
 const STRIDE_METERS = 0.78;
 const TIME_ZONE = 'Europe/London';
-const QUEST_START_DATE = '2026-05-10';
+const QUEST_START_DATE = '2026-05-11';
 const DEADLINE_DATE = '2026-06-20';
 
 function getHalesowenDateValue(date = new Date()) {
@@ -131,10 +133,30 @@ function AuthScreen({ error, onLogin, loading }) {
 }
 
 function SpriteHero({ state }) {
+  const stateImage = state === 'victory' ? playerVictory : state === 'damage' ? playerDamage : playerWalkStrip;
+
   return (
-    <div className="sprite-stage" aria-label={`Player sprite in ${state} state`}>
-      <div className={`sprite-sheet-player sprite-${state}`} style={{ backgroundImage: `url(${spriteSheet})` }} />
+    <div className={`sprite-stage sprite-stage-${state}`} aria-label={`Player sprite in ${state} state`}>
+      <div className="adventure-party">
+        <PixelDog className="dog-chocolate" collar="orange" />
+        <div className={`sprite-sheet-player sprite-${state}`} style={{ backgroundImage: `url(${stateImage})` }} />
+        <PixelDog className="dog-fox-red" collar="blue" />
+      </div>
       <div className="sprite-shadow" />
+    </div>
+  );
+}
+
+function PixelDog({ className, collar }) {
+  return (
+    <div className={`pixel-dog ${className}`} aria-hidden="true">
+      <span className="dog-tail" />
+      <span className="dog-body" />
+      <span className="dog-head" />
+      <span className="dog-ear" />
+      <span className={`dog-collar dog-collar-${collar}`} />
+      <span className="dog-leg dog-leg-front" />
+      <span className="dog-leg dog-leg-back" />
     </div>
   );
 }
@@ -174,13 +196,13 @@ function MetricCard({ label, value, tone = 'cyan', detail }) {
   return (
     <div className="console-card p-4">
       <p className="text-[9px] uppercase leading-5 text-cyan-100/80">{label}</p>
-      <p className={`mt-3 text-xl leading-8 ${toneClass}`}>{value}</p>
+      <p className={`mt-3 break-words text-[clamp(1rem,3vw,1.45rem)] leading-8 ${toneClass}`}>{value}</p>
       {detail && <p className="mt-2 text-[9px] leading-5 text-cyan-100/70">{detail}</p>}
     </div>
   );
 }
 
-function QuestMap({ entries, totalDays }) {
+function QuestMap({ entries, totalDays, onOpenDay }) {
   const loggedDates = new Set(entries.map((entry) => entry.activity_date));
   const currentNode = clamp(entries.length, 0, totalDays - 1);
   const nodes = Array.from({ length: totalDays }, (_, index) => {
@@ -191,22 +213,27 @@ function QuestMap({ entries, totalDays }) {
   return (
     <section className="console-panel p-4">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-xs uppercase text-sonic">Holiday Quest Map</h2>
+        <h2 className="text-xs uppercase text-sonic">Holiday Level Select</h2>
         <span className="text-[10px] text-cyan-100">{entries.length} days logged</span>
       </div>
-      <div className="quest-road">
+      <div className="level-track">
         {nodes.map((dateValue, index) => {
           const logged = loggedDates.has(dateValue);
           const current = index === currentNode;
 
           return (
-            <div
-              className={`quest-node ${logged ? 'quest-node-complete' : ''} ${current ? 'quest-node-current' : ''}`}
+            <button
+              className={`level-node ${logged ? 'level-node-complete' : ''} ${current ? 'level-node-current' : ''}`}
+              disabled={!logged}
               key={dateValue}
+              onClick={() => logged && onOpenDay(dateValue)}
               title={`${formatQuestDate(dateValue)}${logged ? ' logged' : ''}`}
+              type="button"
             >
-              <span>{index + 1}</span>
-            </div>
+              <span className="level-number">Stage {String(index + 1).padStart(2, '0')}</span>
+              <span className="level-date">{formatQuestDate(dateValue).slice(0, 10)}</span>
+              <span className="level-state">{logged ? 'Cleared' : current ? 'Next' : 'Locked'}</span>
+            </button>
           );
         })}
       </div>
@@ -259,18 +286,46 @@ function ActivityForm({ currentEntry, onSave, saving, todayDate }) {
   );
 }
 
-function DayReview({ entries, selectedDate, onSelectDate }) {
+function DayModal({ entry, onClose }) {
+  if (!entry) return null;
+
+  const status = getEntryStatus(entry);
+  const steps = entry.steps || 0;
+  const calories = entry.calories || 0;
+
+  return (
+    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+      <section className="modal-panel console-panel p-5" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[9px] uppercase leading-5 text-magenta">Save File</p>
+            <h2 className="mt-2 text-base leading-7 text-white">{formatQuestDate(entry.activity_date)}</h2>
+          </div>
+          <button className="console-button px-3 py-2 text-[9px]" type="button" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <MetricCard label="Steps" value={formatNumber(steps)} detail={`${formatNumber(Math.max(0, STEP_GOAL - steps))} to target`} />
+          <MetricCard label="KM" value={getDistanceKm(steps).toFixed(2)} detail="Distance walked" />
+          <MetricCard label="Calories" value={formatNumber(calories)} tone={calories > CALORIE_LIMIT ? 'danger' : 'cyan'} detail="Daily health bar" />
+          <MetricCard label="Result" value={status} tone={status === 'Damage' ? 'danger' : 'cyan'} detail="Quest outcome" />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DayReview({ entries, selectedDate, onSelectDate, onOpenDay }) {
   const selectedEntry = entries.find((entry) => entry.activity_date === selectedDate);
-  const status = getEntryStatus(selectedEntry);
   const steps = selectedEntry?.steps || 0;
-  const calories = selectedEntry?.calories || 0;
 
   return (
     <section className="console-panel p-4">
       <div className="mb-4 grid gap-3 md:grid-cols-[1fr_220px] md:items-end">
         <div>
-          <h2 className="text-xs uppercase text-sonic">Review Day</h2>
-          <p className="mt-2 text-[9px] leading-5 text-cyan-100/75">Check previous quest saves without changing today&apos;s log.</p>
+        <h2 className="text-xs uppercase text-sonic">Review Day</h2>
+          <p className="mt-2 text-[9px] leading-5 text-cyan-100/75">Choose a save, then open its result screen.</p>
         </div>
         <label className="text-[9px] uppercase leading-5 text-magenta">
           Save File
@@ -285,11 +340,13 @@ function DayReview({ entries, selectedDate, onSelectDate }) {
       </div>
 
       {selectedEntry ? (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-stretch">
           <MetricCard label="Date" value={formatQuestDate(selectedDate).replace(',', '')} />
-          <MetricCard label="Steps" value={formatNumber(steps)} detail={`${Math.max(0, STEP_GOAL - steps).toLocaleString('en-GB')} to target`} />
+          <MetricCard label="Steps" value={formatNumber(steps)} detail={`${formatNumber(Math.max(0, STEP_GOAL - steps))} to target`} />
           <MetricCard label="KM" value={getDistanceKm(steps).toFixed(2)} detail="Distance walked" />
-          <MetricCard label="Calories" value={formatNumber(calories)} tone={calories > CALORIE_LIMIT ? 'danger' : 'cyan'} detail={status} />
+          <button className="console-button px-4 py-3 text-[10px]" type="button" onClick={() => onOpenDay(selectedDate)}>
+            Open
+          </button>
         </div>
       ) : (
         <div className="console-readout p-4 text-[10px] leading-5 text-cyan-100">No previous days have been logged yet.</div>
@@ -298,7 +355,7 @@ function DayReview({ entries, selectedDate, onSelectDate }) {
   );
 }
 
-function ActivityLog({ entries, onSelectDate }) {
+function ActivityLog({ entries, onOpenDay }) {
   const recentEntries = [...entries].reverse();
 
   return (
@@ -324,7 +381,7 @@ function ActivityLog({ entries, onSelectDate }) {
                 <tr
                   className="cursor-pointer text-cyan-100 transition hover:bg-sonic/10"
                   key={entry.id || entry.activity_date}
-                  onClick={() => onSelectDate(entry.activity_date)}
+                  onClick={() => onOpenDay(entry.activity_date)}
                 >
                   <td className="border-b border-genesis/50 p-3">{formatQuestDate(entry.activity_date)}</td>
                   <td className="border-b border-genesis/50 p-3">{formatNumber(entry.steps)}</td>
@@ -351,6 +408,7 @@ function ActivityLog({ entries, onSelectDate }) {
 function Dashboard({ session, onSignOut }) {
   const [entries, setEntries] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
+  const [modalDate, setModalDate] = useState('');
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
@@ -366,7 +424,7 @@ function Dashboard({ session, onSignOut }) {
     if (error) {
       setNotice(error.message);
     } else {
-      const nextEntries = data || [];
+      const nextEntries = (data || []).filter((entry) => entry.activity_date >= QUEST_START_DATE);
       setEntries(nextEntries);
       setSelectedDate((currentDate) => currentDate || nextEntries.at(-1)?.activity_date || '');
     }
@@ -397,6 +455,7 @@ function Dashboard({ session, onSignOut }) {
   const totalCalories = entries.reduce((sum, entry) => sum + entry.calories, 0);
   const totalKm = getDistanceKm(totalSteps);
   const victoryDays = entries.filter((entry) => getEntryStatus(entry) === 'Victory').length;
+  const modalEntry = entries.find((entry) => entry.activity_date === modalDate);
 
   async function handleSave(event, payload) {
     event.preventDefault();
@@ -431,6 +490,7 @@ function Dashboard({ session, onSignOut }) {
     <main className="min-h-screen bg-void px-3 py-4 text-white sm:px-6 lg:px-8">
       <div className="crt-shell mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-sonic/80 bg-night p-3 shadow-neon sm:p-5">
         <div className="crt-content space-y-5">
+          <DayModal entry={modalEntry} onClose={() => setModalDate('')} />
           <header className="console-panel grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
               <p className="text-[10px] uppercase leading-5 text-magenta">Mega Drive Calorie Quest</p>
@@ -467,8 +527,12 @@ function Dashboard({ session, onSignOut }) {
               <section className="console-panel space-y-4 p-4">
                 <h2 className="text-xs uppercase text-sonic">Campaign Totals</h2>
                 <div className="grid grid-cols-2 gap-3">
-                  <MetricCard label="Total Steps" value={formatNumber(totalSteps)} />
-                  <MetricCard label="Total KM" value={totalKm.toFixed(2)} />
+                  <div className="col-span-2">
+                    <MetricCard label="Total Steps" value={formatNumber(totalSteps)} detail="Campaign distance fuel" />
+                  </div>
+                  <div className="col-span-2">
+                    <MetricCard label="Total KM" value={totalKm.toFixed(2)} detail="Total distance walked" />
+                  </div>
                   <MetricCard label="Logged Days" value={formatNumber(entries.length)} />
                   <MetricCard label="Victory Days" value={formatNumber(victoryDays)} detail={`${formatNumber(totalCalories)} calories logged`} />
                 </div>
@@ -507,7 +571,7 @@ function Dashboard({ session, onSignOut }) {
                 />
               </section>
 
-              <QuestMap entries={entries} totalDays={totalQuestDays} />
+              <QuestMap entries={entries} totalDays={totalQuestDays} onOpenDay={setModalDate} />
             </div>
           </section>
 
@@ -515,8 +579,8 @@ function Dashboard({ session, onSignOut }) {
             <div className="console-panel p-4 text-[10px] text-cyan-100">Loading Supabase save files...</div>
           ) : (
             <>
-              <DayReview entries={entries} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-              <ActivityLog entries={entries} onSelectDate={setSelectedDate} />
+              <DayReview entries={entries} selectedDate={selectedDate} onSelectDate={setSelectedDate} onOpenDay={setModalDate} />
+              <ActivityLog entries={entries} onOpenDay={setModalDate} />
             </>
           )}
         </div>
