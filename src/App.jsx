@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
+import dogChocolateStrip from './assets/dog-chocolate-strip.png';
+import dogFoxRedStrip from './assets/dog-fox-red-strip.png';
 import playerDamage from './assets/player-damage.png';
 import playerVictory from './assets/player-victory.png';
 import playerWalkStrip from './assets/player-walk-strip.png';
@@ -138,27 +140,17 @@ function SpriteHero({ state }) {
   return (
     <div className={`sprite-stage sprite-stage-${state}`} aria-label={`Player sprite in ${state} state`}>
       <div className="adventure-party">
-        <PixelDog className="dog-chocolate" collar="orange" />
+        <PixelDog className="dog-chocolate" image={dogChocolateStrip} />
         <div className={`sprite-sheet-player sprite-${state}`} style={{ backgroundImage: `url(${stateImage})` }} />
-        <PixelDog className="dog-fox-red" collar="blue" />
+        <PixelDog className="dog-fox-red" image={dogFoxRedStrip} />
       </div>
       <div className="sprite-shadow" />
     </div>
   );
 }
 
-function PixelDog({ className, collar }) {
-  return (
-    <div className={`pixel-dog ${className}`} aria-hidden="true">
-      <span className="dog-tail" />
-      <span className="dog-body" />
-      <span className="dog-head" />
-      <span className="dog-ear" />
-      <span className={`dog-collar dog-collar-${collar}`} />
-      <span className="dog-leg dog-leg-front" />
-      <span className="dog-leg dog-leg-back" />
-    </div>
-  );
+function PixelDog({ className, image }) {
+  return <div className={`pixel-dog ${className}`} style={{ backgroundImage: `url(${image})` }} aria-hidden="true" />;
 }
 
 function ProgressBar({ label, value, target, dangerOver = false, kind, caption }) {
@@ -251,37 +243,42 @@ function ActivityForm({ currentEntry, onSave, saving, todayDate }) {
   }, [currentEntry, todayDate]);
 
   return (
-    <form
-      className="console-panel grid gap-4 p-4 md:grid-cols-[1.15fr_1fr_1fr_auto] md:items-end"
-      onSubmit={(event) => onSave(event, { activity_date: todayDate, steps, calories })}
-    >
-      <div className="console-readout min-h-[72px] p-3">
-        <p className="text-[9px] uppercase leading-5 text-magenta">Today&apos;s Quest</p>
-        <p className="mt-2 text-[11px] leading-6 text-white">{formatQuestDate(todayDate)}</p>
+    <form className="console-panel p-4" onSubmit={(event) => onSave(event, { activity_date: todayDate, steps, calories })}>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-xs uppercase text-sonic">Update Today&apos;s Stats</h2>
+          <p className="mt-2 text-[9px] leading-5 text-cyan-100/75">Enter or overwrite today&apos;s steps and calories.</p>
+        </div>
+        <div className="console-readout min-w-[220px] p-3">
+          <p className="text-[9px] uppercase leading-5 text-magenta">Today&apos;s Quest</p>
+          <p className="mt-2 text-[11px] leading-6 text-white">{formatQuestDate(todayDate)}</p>
+        </div>
       </div>
-      <label className="text-[10px] uppercase leading-5 text-sonic">
-        Steps
-        <input
-          className="console-input mt-2"
-          type="number"
-          min="0"
-          value={steps}
-          onChange={(event) => setSteps(Number(event.target.value))}
-        />
-      </label>
-      <label className="text-[10px] uppercase leading-5 text-sonic">
-        Calories
-        <input
-          className="console-input mt-2"
-          type="number"
-          min="0"
-          value={calories}
-          onChange={(event) => setCalories(Number(event.target.value))}
-        />
-      </label>
-      <button className="console-button h-[54px] px-5 text-xs" type="submit" disabled={saving}>
-        {saving ? 'Saving' : currentEntry ? 'Update' : 'Log Today'}
-      </button>
+      <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+        <label className="text-[10px] uppercase leading-5 text-sonic">
+          Steps
+          <input
+            className="console-input mt-2"
+            type="number"
+            min="0"
+            value={steps}
+            onChange={(event) => setSteps(Number(event.target.value))}
+          />
+        </label>
+        <label className="text-[10px] uppercase leading-5 text-sonic">
+          Calories
+          <input
+            className="console-input mt-2"
+            type="number"
+            min="0"
+            value={calories}
+            onChange={(event) => setCalories(Number(event.target.value))}
+          />
+        </label>
+        <button className="console-button h-[54px] px-5 text-xs" type="submit" disabled={saving}>
+          {saving ? 'Saving' : currentEntry ? 'Update Stats' : 'Log Today'}
+        </button>
+      </div>
     </form>
   );
 }
