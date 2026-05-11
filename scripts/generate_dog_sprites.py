@@ -1,84 +1,154 @@
+from collections import deque
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SOURCE_CANDIDATES = [
+    ROOT / "dog_reference.png",
+    Path(r"C:\Users\jrbri\Desktop\Gemini_Generated_Image_ue667tue667tue66.png"),
+]
 OUT = ROOT / "src" / "assets"
-FRAME = (128, 88)
-SCALE = 3
+FRAME_SIZE = (360, 190)
+
+# Complete all-fours chocolate lab frames from the reference sheet.
+SOURCE_FRAMES = [
+    (18, 54, 362, 210),
+    (578, 56, 900, 214),
+    (20, 240, 360, 392),
+    (604, 240, 900, 392),
+]
+
+# Ping-pong the cycle to make it longer and less snappy.
+ANIMATION_ORDER = [0, 1, 2, 3, 2, 1, 0, 3]
 
 
-def rect(draw, xy, fill, outline="#0b0714", width=2):
-    draw.rectangle(xy, fill=fill, outline=outline, width=width)
+def is_background_like(pixel):
+    r, g, b, a = pixel
+    if a == 0:
+        return False
+    if not (70 <= r <= 190 and 70 <= g <= 190 and 70 <= b <= 190):
+        return False
+    return max(r, g, b) - min(r, g, b) <= 22
 
 
-def poly(draw, points, fill, outline="#0b0714", width=2):
-    draw.polygon(points, fill=fill)
-    draw.line(points + [points[0]], fill=outline, width=width, joint="curve")
+def remove_connected_background(image):
+    image = image.convert("RGBA")
+    pixels = image.load()
+    width, height = image.size
+    queue = deque()
+    seen = set()
+
+    for x in range(width):
+        queue.append((x, 0))
+        queue.append((x, height - 1))
+    for y in range(height):
+        queue.append((0, y))
+        queue.append((width - 1, y))
+
+    while queue:
+        x, y = queue.popleft()
+        if (x, y) in seen or x < 0 or y < 0 or x >= width or y >= height:
+            continue
+        seen.add((x, y))
+
+        if not is_background_like(pixels[x, y]):
+            continue
+
+        pixels[x, y] = (0, 0, 0, 0)
+        queue.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+
+    return image
 
 
-def draw_dog(fur, dark, collar, frame_index):
-    image = Image.new("RGBA", FRAME, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
+def trim_and_stage(image):
+    bbox = image.getbbox()
+    if not bbox:
+        return Image.new("RGBA", FRAME_SIZE, (0, 0, 0, 0))
 
-    bob = 1 if frame_index % 2 else 0
-    leg_phase = frame_index % 4
-    tail_angle = [0, -3, 1, -4][frame_index]
-
-    # Tail
-    poly(
-        draw,
-        [(18, 40 + bob), (8, 34 + tail_angle), (11, 29 + tail_angle), (28, 36 + bob)],
-        fur,
-    )
-
-    # Body and chest
-    rect(draw, (26, 34 + bob, 88, 58 + bob), fur)
-    rect(draw, (62, 36 + bob, 91, 60 + bob), dark)
-    rect(draw, (33, 42 + bob, 74, 62 + bob), fur, width=1)
-
-    # Neck, head, muzzle
-    rect(draw, (82, 29 + bob, 96, 50 + bob), fur)
-    rect(draw, (90, 22 + bob, 116, 45 + bob), fur)
-    rect(draw, (108, 31 + bob, 124, 42 + bob), fur)
-    rect(draw, (111, 35 + bob, 124, 42 + bob), dark, width=1)
-
-    # Ear and eye
-    poly(draw, [(92, 23 + bob), (83, 28 + bob), (86, 47 + bob), (97, 43 + bob)], dark)
-    rect(draw, (107, 28 + bob, 111, 32 + bob), "#120812", width=1)
-
-    # Collar
-    rect(draw, (88, 45 + bob, 99, 51 + bob), collar, width=1)
-
-    # Legs with four-frame alternating walk
-    front_offset = [-4, 2, 4, -2][leg_phase]
-    back_offset = [3, -3, -4, 2][leg_phase]
-    mid_offset = [1, -2, 2, -1][leg_phase]
-
-    rect(draw, (78 + front_offset, 56 + bob, 88 + front_offset, 79 + bob), dark)
-    rect(draw, (82 + front_offset, 76 + bob, 99 + front_offset, 84 + bob), dark, width=1)
-    rect(draw, (34 + back_offset, 56 + bob, 44 + back_offset, 79 + bob), dark)
-    rect(draw, (27 + back_offset, 76 + bob, 44 + back_offset, 84 + bob), dark, width=1)
-    rect(draw, (55 + mid_offset, 56 + bob, 65 + mid_offset, 78 + bob), dark)
-    rect(draw, (56 + mid_offset, 75 + bob, 73 + mid_offset, 83 + bob), dark, width=1)
-
-    return image.resize((FRAME[0] * SCALE, FRAME[1] * SCALE), Image.Resampling.NEAREST)
+    subject = image.crop(bbox)
+    frame = Image.new("RGBA", FRAME_SIZE, (0, 0, 0, 0))
+    x = (FRAME_SIZE[0] - subject.width) // 2
+    y = FRAME_SIZE[1] - subject.height
+    frame.alpha_composite(subject, (x, y))
+    return frame
 
 
-def save_strip(name, fur, dark, collar):
-    frames = [draw_dog(fur, dark, collar, frame) for frame in range(4)]
+def is_collar_orange(r, g, b):
+    return r > 150 and 45 <= g <= 125 and b < 45
+
+
+def is_fur_pixel(r, g, b):
+    if is_collar_orange(r, g, b):
+        return False
+    if r < 24 and g < 24 and b < 28:
+        return False
+    if b > 95:
+        return False
+    return 42 <= r <= 150 and 18 <= g <= 95 and 8 <= b <= 82 and r >= g >= b * 0.55
+
+
+def recolor_fox_red(frame):
+    frame = frame.copy().convert("RGBA")
+    pixels = frame.load()
+    width, height = frame.size
+
+    for y in range(height):
+        for x in range(width):
+            r, g, b, a = pixels[x, y]
+            if a == 0:
+                continue
+
+            if is_collar_orange(r, g, b):
+                brightness = (r + g + b) / 3 / 255
+                pixels[x, y] = (
+                    int(45 + 95 * brightness),
+                    int(175 + 70 * brightness),
+                    int(210 + 45 * brightness),
+                    a,
+                )
+                continue
+
+            if is_fur_pixel(r, g, b):
+                brightness = max(0.0, min(1.0, (0.45 * r + 0.35 * g + 0.2 * b - 32) / 118))
+                dark = (112, 42, 14)
+                mid = (197, 91, 28)
+                light = (232, 132, 45)
+                if brightness < 0.58:
+                    t = brightness / 0.58
+                    colour = tuple(int(dark[i] + (mid[i] - dark[i]) * t) for i in range(3))
+                else:
+                    t = (brightness - 0.58) / 0.42
+                    colour = tuple(int(mid[i] + (light[i] - mid[i]) * t) for i in range(3))
+                pixels[x, y] = (*colour, a)
+
+    return frame
+
+
+def make_frames():
+    source_path = next((path for path in SOURCE_CANDIDATES if path.exists()), None)
+    if source_path is None:
+        raise FileNotFoundError("Dog reference sprite sheet not found.")
+
+    source = Image.open(source_path)
+    base_frames = [trim_and_stage(remove_connected_background(source.crop(region))) for region in SOURCE_FRAMES]
+    return [base_frames[index] for index in ANIMATION_ORDER]
+
+
+def save_strip(frames, path):
     width, height = frames[0].size
     strip = Image.new("RGBA", (width * len(frames), height), (0, 0, 0, 0))
     for index, frame in enumerate(frames):
         strip.alpha_composite(frame, (index * width, 0))
-    strip.save(OUT / name)
+    strip.save(path)
 
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    save_strip("dog-chocolate-strip.png", "#6a3a22", "#3a1d12", "#ff8a00")
-    save_strip("dog-fox-red-strip.png", "#c9652f", "#783315", "#7ce8ff")
+    chocolate_frames = make_frames()
+    save_strip(chocolate_frames, OUT / "dog-chocolate-strip.png")
+    save_strip([recolor_fox_red(frame) for frame in chocolate_frames], OUT / "dog-fox-red-strip.png")
 
 
 if __name__ == "__main__":

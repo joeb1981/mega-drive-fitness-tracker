@@ -234,7 +234,7 @@ button {
   width: 190px;
   height: 340px;
   background-size: 1520px 340px;
-  animation: playerWalkStrip 0.85s steps(8) infinite;
+  animation: playerWalkStrip 1.25s steps(8) infinite;
 }
 
 .sprite-victory {
@@ -264,26 +264,26 @@ button {
 
 .pixel-dog {
   position: absolute;
-  bottom: 4px;
+  bottom: 2px;
   z-index: 6;
-  width: 192px;
-  height: 132px;
+  width: 260px;
+  height: 137px;
   background-repeat: no-repeat;
-  background-size: 768px 132px;
+  background-size: 2080px 137px;
   image-rendering: pixelated;
-  animation: dogWalkStrip 0.72s steps(4) infinite;
+  animation: dogWalkStrip 1.45s steps(8) infinite;
   filter:
     drop-shadow(0 0 2px rgba(15, 244, 255, 0.34))
     drop-shadow(0 9px 0 rgba(0, 0, 0, 0.28));
 }
 
 .dog-chocolate {
-  left: 0;
+  left: -14px;
 }
 
 .dog-fox-red {
-  right: -8px;
-  animation-delay: 0.18s;
+  right: -24px;
+  animation-delay: 0.32s;
 }
 
 .level-track {
@@ -666,7 +666,7 @@ button {
   }
 
   to {
-    background-position: -768px 0;
+    background-position: -2080px 0;
   }
 }
 
