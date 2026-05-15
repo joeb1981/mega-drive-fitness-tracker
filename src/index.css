@@ -167,6 +167,53 @@ button {
   opacity: 0.55;
 }
 
+.powerup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 0.7rem;
+}
+
+.powerup-card {
+  display: grid;
+  min-height: 82px;
+  align-content: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(15, 244, 255, 0.65);
+  background:
+    linear-gradient(180deg, rgba(20, 5, 54, 0.88), rgba(3, 0, 12, 0.9)),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 5px);
+  color: white;
+  padding: 0.75rem;
+  text-align: left;
+  box-shadow: inset 0 0 16px rgba(15, 244, 255, 0.08);
+}
+
+.powerup-card span {
+  color: #0ff4ff;
+  font-size: 0.72rem;
+  line-height: 1.2rem;
+}
+
+.powerup-card small {
+  color: rgba(207, 255, 255, 0.72);
+  font-size: 0.52rem;
+  line-height: 0.95rem;
+}
+
+.powerup-card:hover:not(:disabled),
+.powerup-card-selected {
+  border-color: #ff38d1;
+  background: linear-gradient(180deg, rgba(255, 56, 209, 0.28), rgba(108, 45, 255, 0.25));
+  box-shadow: 0 0 18px rgba(255, 56, 209, 0.22);
+}
+
+.powerup-card:disabled,
+.powerup-card-locked {
+  cursor: not-allowed;
+  filter: grayscale(0.9);
+  opacity: 0.48;
+}
+
 .character-stage {
   position: relative;
   overflow: hidden;

@@ -17,6 +17,15 @@ const STRIDE_METERS = 0.78;
 const TIME_ZONE = 'Europe/London';
 const QUEST_START_DATE = '2026-05-11';
 const DEADLINE_DATE = '2026-06-20';
+const POWERUPS = [
+  { id: 'cheat-day-1', label: 'Free Pass', shortLabel: 'Cheat', type: 'cheat', bonus: 0 },
+  { id: 'boost-500-1', label: '+500 Ration', shortLabel: '+500', type: 'boost', bonus: 500 },
+  { id: 'boost-500-2', label: '+500 Ration', shortLabel: '+500', type: 'boost', bonus: 500 },
+  { id: 'boost-250-1', label: '+250 Snack', shortLabel: '+250', type: 'boost', bonus: 250 },
+  { id: 'boost-250-2', label: '+250 Snack', shortLabel: '+250', type: 'boost', bonus: 250 },
+  { id: 'boost-100-1', label: '+100 Nibble', shortLabel: '+100', type: 'boost', bonus: 100 },
+  { id: 'boost-100-2', label: '+100 Nibble', shortLabel: '+100', type: 'boost', bonus: 100 },
+];
 
 function getHalesowenDateValue(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -75,9 +84,46 @@ function getDistanceKm(steps) {
 
 function getEntryStatus(entry) {
   if (!entry) return 'Awaiting log';
-  if (entry.steps >= STEP_GOAL && entry.calories < CALORIE_LIMIT) return 'Victory';
-  if (entry.calories > CALORIE_LIMIT) return 'Damage';
+  if (entry.steps >= STEP_GOAL && !isEntryOverCalories(entry)) return 'Victory';
+  if (isEntryOverCalories(entry)) return 'Damage';
   return 'Walking';
+}
+
+function getPowerupById(powerupId) {
+  return POWERUPS.find((powerup) => powerup.id === powerupId);
+}
+
+function getEntryCalorieBonus(entry) {
+  return Number(entry?.calorie_bonus || 0);
+}
+
+function isCheatDay(entry) {
+  return Boolean(entry?.cheat_day);
+}
+
+function getEffectiveCalorieLimit(entry) {
+  if (isCheatDay(entry)) return Number.POSITIVE_INFINITY;
+  return CALORIE_LIMIT + getEntryCalorieBonus(entry);
+}
+
+function isEntryOverCalories(entry) {
+  if (!entry || isCheatDay(entry)) return false;
+  return Number(entry.calories || 0) > getEffectiveCalorieLimit(entry);
+}
+
+function getPowerupLabel(powerupId) {
+  const powerup = getPowerupById(powerupId);
+  return powerup ? powerup.label : 'None';
+}
+
+function currentPowerupPayload(entry) {
+  if (!entry?.powerup_id) return {};
+
+  return {
+    powerup_id: entry.powerup_id,
+    calorie_bonus: getEntryCalorieBonus(entry),
+    cheat_day: isCheatDay(entry),
+  };
 }
 
 function AuthScreen({ error, onLogin, loading }) {
@@ -233,17 +279,24 @@ function QuestMap({ entries, totalDays, onOpenDay }) {
   );
 }
 
-function ActivityForm({ currentEntry, onSave, saving, todayDate }) {
+function ActivityForm({ currentEntry, onSave, saving, todayDate, usedPowerupIds }) {
   const [steps, setSteps] = useState(currentEntry?.steps || 0);
   const [calories, setCalories] = useState(currentEntry?.calories || 0);
+  const [selectedPowerupId, setSelectedPowerupId] = useState(currentEntry?.powerup_id || '');
 
   useEffect(() => {
     setSteps(currentEntry?.steps || 0);
     setCalories(currentEntry?.calories || 0);
+    setSelectedPowerupId(currentEntry?.powerup_id || '');
   }, [currentEntry, todayDate]);
 
+  const lockedPowerupId = currentEntry?.powerup_id || '';
+
   return (
-    <form className="console-panel p-4" onSubmit={(event) => onSave(event, { activity_date: todayDate, steps, calories })}>
+    <form
+      className="console-panel p-4"
+      onSubmit={(event) => onSave(event, { activity_date: todayDate, steps, calories, powerup_id: selectedPowerupId })}
+    >
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-xs uppercase text-sonic">Update Today&apos;s Stats</h2>
@@ -279,6 +332,33 @@ function ActivityForm({ currentEntry, onSave, saving, todayDate }) {
           {saving ? 'Saving' : currentEntry ? 'Update Stats' : 'Log Today'}
         </button>
       </div>
+      <div className="mt-5 border-t border-genesis/70 pt-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-[10px] uppercase leading-5 text-sonic">Power-Ups</h3>
+          <p className="text-[9px] leading-5 text-cyan-100/75">One use only. Used items lock forever.</p>
+        </div>
+        <div className="powerup-grid">
+          {POWERUPS.map((powerup) => {
+            const used = usedPowerupIds.has(powerup.id);
+            const usedOnToday = lockedPowerupId === powerup.id;
+            const selected = selectedPowerupId === powerup.id;
+            const disabled = used && !usedOnToday;
+
+            return (
+              <button
+                className={`powerup-card ${selected ? 'powerup-card-selected' : ''} ${disabled ? 'powerup-card-locked' : ''}`}
+                disabled={disabled || Boolean(lockedPowerupId)}
+                key={powerup.id}
+                onClick={() => setSelectedPowerupId(selected ? '' : powerup.id)}
+                type="button"
+              >
+                <span>{powerup.shortLabel}</span>
+                <small>{usedOnToday ? 'Used Today' : disabled ? 'Locked' : powerup.label}</small>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </form>
   );
 }
@@ -289,6 +369,8 @@ function DayModal({ entry, onClose }) {
   const status = getEntryStatus(entry);
   const steps = entry.steps || 0;
   const calories = entry.calories || 0;
+  const effectiveLimit = getEffectiveCalorieLimit(entry);
+  const calorieDetail = isCheatDay(entry) ? 'Cheat day active' : `${formatNumber(effectiveLimit)} limit`;
 
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
@@ -305,7 +387,8 @@ function DayModal({ entry, onClose }) {
         <div className="grid gap-4 md:grid-cols-2">
           <MetricCard label="Steps" value={formatNumber(steps)} detail={`${formatNumber(Math.max(0, STEP_GOAL - steps))} to target`} />
           <MetricCard label="KM" value={getDistanceKm(steps).toFixed(2)} detail="Distance walked" />
-          <MetricCard label="Calories" value={formatNumber(calories)} tone={calories > CALORIE_LIMIT ? 'danger' : 'cyan'} detail="Daily health bar" />
+          <MetricCard label="Calories" value={formatNumber(calories)} tone={isEntryOverCalories(entry) ? 'danger' : 'cyan'} detail={calorieDetail} />
+          <MetricCard label="Power-Up" value={getPowerupLabel(entry.powerup_id)} detail={isCheatDay(entry) ? 'No calorie damage' : `${formatNumber(getEntryCalorieBonus(entry))} bonus calories`} />
           <MetricCard label="Result" value={status} tone={status === 'Damage' ? 'danger' : 'cyan'} detail="Quest outcome" />
         </div>
       </section>
@@ -441,32 +524,45 @@ function Dashboard({ session, onSignOut }) {
   const todayEntry = entries.find((entry) => entry.activity_date === todayDate);
   const activeSteps = todayEntry?.steps || 0;
   const activeCalories = todayEntry?.calories || 0;
+  const activeCalorieLimit = getEffectiveCalorieLimit(todayEntry);
+  const calorieBarTarget = Number.isFinite(activeCalorieLimit) ? activeCalorieLimit : Math.max(activeCalories, CALORIE_LIMIT);
   const distanceKm = getDistanceKm(activeSteps).toFixed(2);
   const stepPercent = Math.round((activeSteps / STEP_GOAL) * 100);
   const daysRemaining = Math.max(0, getDateValueDifference(todayDate, DEADLINE_DATE) + 1);
   const totalQuestDays = getDateValueDifference(QUEST_START_DATE, DEADLINE_DATE) + 1;
   const status = getEntryStatus(todayEntry);
   const spriteState = status === 'Victory' ? 'victory' : status === 'Damage' ? 'damage' : 'walking';
-  const calorieTone = activeCalories > CALORIE_LIMIT ? 'danger' : activeCalories > CALORIE_LIMIT * 0.8 ? 'warm' : 'cyan';
+  const calorieTone = isEntryOverCalories(todayEntry) ? 'danger' : activeCalories > calorieBarTarget * 0.8 ? 'warm' : 'cyan';
   const totalSteps = entries.reduce((sum, entry) => sum + entry.steps, 0);
   const totalCalories = entries.reduce((sum, entry) => sum + entry.calories, 0);
   const totalKm = getDistanceKm(totalSteps);
   const victoryDays = entries.filter((entry) => getEntryStatus(entry) === 'Victory').length;
   const modalEntry = entries.find((entry) => entry.activity_date === modalDate);
+  const usedPowerupIds = new Set(entries.map((entry) => entry.powerup_id).filter(Boolean));
 
   async function handleSave(event, payload) {
     event.preventDefault();
     setSaving(true);
     setNotice('');
 
+    const selectedPowerup = getPowerupById(payload.powerup_id);
+    const powerupPayload = selectedPowerup
+      ? {
+          powerup_id: selectedPowerup.id,
+          calorie_bonus: selectedPowerup.type === 'boost' ? selectedPowerup.bonus : 0,
+          cheat_day: selectedPowerup.type === 'cheat',
+        }
+      : currentPowerupPayload(todayEntry);
+
     const { error } = await supabase
       .from('daily_activity')
       .upsert(
         {
-          ...payload,
+          activity_date: payload.activity_date,
           user_id: session.user.id,
           steps: Number(payload.steps),
           calories: Number(payload.calories),
+          ...powerupPayload,
         },
         { onConflict: 'user_id,activity_date' },
       )
@@ -537,7 +633,7 @@ function Dashboard({ session, onSignOut }) {
             </div>
 
             <div className="space-y-5">
-              <ActivityForm currentEntry={todayEntry} onSave={handleSave} saving={saving} todayDate={todayDate} />
+              <ActivityForm currentEntry={todayEntry} onSave={handleSave} saving={saving} todayDate={todayDate} usedPowerupIds={usedPowerupIds} />
               {notice && <p className="console-panel border-ember/80 bg-ember/10 p-3 text-[10px] leading-5 text-amber-100">{notice}</p>}
 
               <section className="grid gap-4 md:grid-cols-3">
@@ -545,9 +641,9 @@ function Dashboard({ session, onSignOut }) {
                 <MetricCard label="Step Goal" value={`${stepPercent}%`} detail={`${formatNumber(STEP_GOAL - Math.min(activeSteps, STEP_GOAL))} left`} />
                 <MetricCard
                   label="Calorie Limit"
-                  value={activeCalories > CALORIE_LIMIT ? 'Over' : 'OK'}
+                  value={isEntryOverCalories(todayEntry) ? 'Over' : 'OK'}
                   tone={calorieTone}
-                  detail={`${formatNumber(Math.max(0, CALORIE_LIMIT - activeCalories))} remaining`}
+                  detail={isCheatDay(todayEntry) ? 'Unlimited today' : `${formatNumber(Math.max(0, activeCalorieLimit - activeCalories))} remaining`}
                 />
               </section>
 
@@ -562,9 +658,9 @@ function Dashboard({ session, onSignOut }) {
                 <ProgressBar
                   dangerOver
                   label="Calories Health"
-                  target={CALORIE_LIMIT}
+                  target={calorieBarTarget}
                   value={activeCalories}
-                  caption="Stay under 2,000 calories to protect your health bar."
+                  caption={isCheatDay(todayEntry) ? 'Cheat day active: calories cannot break progress.' : `Limit is ${formatNumber(calorieBarTarget)} with selected boosts.`}
                 />
               </section>
 
