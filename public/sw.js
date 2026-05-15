@@ -1,6 +1,5 @@
-const CACHE_NAME = 'mega-drive-calorie-quest-v1';
+const CACHE_NAME = 'mega-drive-calorie-quest-v2';
 const APP_SHELL = [
-  '/',
   '/manifest.webmanifest',
   '/icon-32.png',
   '/icon-180.png',
@@ -31,6 +30,19 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('/'))),
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {

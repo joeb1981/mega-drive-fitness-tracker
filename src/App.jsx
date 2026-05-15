@@ -25,6 +25,8 @@ const POWERUPS = [
   { id: 'boost-250-2', label: '+250 Snack', shortLabel: '+250', type: 'boost', bonus: 250 },
   { id: 'boost-100-1', label: '+100 Nibble', shortLabel: '+100', type: 'boost', bonus: 100 },
   { id: 'boost-100-2', label: '+100 Nibble', shortLabel: '+100', type: 'boost', bonus: 100 },
+  { id: 'rest-day-1', label: 'Rest Day', shortLabel: '10K', type: 'rest', bonus: 0 },
+  { id: 'rest-day-2', label: 'Rest Day', shortLabel: '10K', type: 'rest', bonus: 0 },
 ];
 
 function getHalesowenDateValue(date = new Date()) {
@@ -84,7 +86,7 @@ function getDistanceKm(steps) {
 
 function getEntryStatus(entry) {
   if (!entry) return 'Awaiting log';
-  if (entry.steps >= STEP_GOAL && !isEntryOverCalories(entry)) return 'Victory';
+  if (entry.steps >= getEffectiveStepGoal(entry) && !isEntryOverCalories(entry)) return 'Victory';
   if (isEntryOverCalories(entry)) return 'Damage';
   return 'Walking';
 }
@@ -99,6 +101,15 @@ function getEntryCalorieBonus(entry) {
 
 function isCheatDay(entry) {
   return Boolean(entry?.cheat_day);
+}
+
+function isRestDay(entry) {
+  const powerup = getPowerupById(entry?.powerup_id);
+  return powerup?.type === 'rest';
+}
+
+function getEffectiveStepGoal(entry) {
+  return isRestDay(entry) ? 10000 : STEP_GOAL;
 }
 
 function getEffectiveCalorieLimit(entry) {
@@ -353,7 +364,15 @@ function ActivityForm({ currentEntry, onSave, saving, todayDate, usedPowerupIds 
                 type="button"
               >
                 <span>{powerup.shortLabel}</span>
-                <small>{usedOnToday ? 'Used Today' : disabled ? 'Locked' : powerup.label}</small>
+                <small>
+                  {usedOnToday
+                    ? 'Used Today'
+                    : disabled
+                      ? 'Locked'
+                      : powerup.type === 'rest'
+                        ? '10K step target'
+                        : powerup.label}
+                </small>
               </button>
             );
           })}
@@ -371,6 +390,7 @@ function DayModal({ entry, onClose }) {
   const calories = entry.calories || 0;
   const effectiveLimit = getEffectiveCalorieLimit(entry);
   const calorieDetail = isCheatDay(entry) ? 'Cheat day active' : `${formatNumber(effectiveLimit)} limit`;
+  const stepGoal = getEffectiveStepGoal(entry);
 
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
@@ -385,10 +405,14 @@ function DayModal({ entry, onClose }) {
           </button>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <MetricCard label="Steps" value={formatNumber(steps)} detail={`${formatNumber(Math.max(0, STEP_GOAL - steps))} to target`} />
+          <MetricCard label="Steps" value={formatNumber(steps)} detail={`${formatNumber(Math.max(0, stepGoal - steps))} to target`} />
           <MetricCard label="KM" value={getDistanceKm(steps).toFixed(2)} detail="Distance walked" />
           <MetricCard label="Calories" value={formatNumber(calories)} tone={isEntryOverCalories(entry) ? 'danger' : 'cyan'} detail={calorieDetail} />
-          <MetricCard label="Power-Up" value={getPowerupLabel(entry.powerup_id)} detail={isCheatDay(entry) ? 'No calorie damage' : `${formatNumber(getEntryCalorieBonus(entry))} bonus calories`} />
+          <MetricCard
+            label="Power-Up"
+            value={getPowerupLabel(entry.powerup_id)}
+            detail={isRestDay(entry) ? '10,000 step target' : isCheatDay(entry) ? 'No calorie damage' : `${formatNumber(getEntryCalorieBonus(entry))} bonus calories`}
+          />
           <MetricCard label="Result" value={status} tone={status === 'Damage' ? 'danger' : 'cyan'} detail="Quest outcome" />
         </div>
       </section>
@@ -399,6 +423,7 @@ function DayModal({ entry, onClose }) {
 function DayReview({ entries, selectedDate, onSelectDate, onOpenDay }) {
   const selectedEntry = entries.find((entry) => entry.activity_date === selectedDate);
   const steps = selectedEntry?.steps || 0;
+  const stepGoal = getEffectiveStepGoal(selectedEntry);
 
   return (
     <section className="console-panel p-4">
@@ -422,7 +447,7 @@ function DayReview({ entries, selectedDate, onSelectDate, onOpenDay }) {
       {selectedEntry ? (
         <div className="grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-stretch">
           <MetricCard label="Date" value={formatQuestDate(selectedDate).replace(',', '')} />
-          <MetricCard label="Steps" value={formatNumber(steps)} detail={`${formatNumber(Math.max(0, STEP_GOAL - steps))} to target`} />
+          <MetricCard label="Steps" value={formatNumber(steps)} detail={`${formatNumber(Math.max(0, stepGoal - steps))} to target`} />
           <MetricCard label="KM" value={getDistanceKm(steps).toFixed(2)} detail="Distance walked" />
           <button className="console-button px-4 py-3 text-[10px]" type="button" onClick={() => onOpenDay(selectedDate)}>
             Open
@@ -524,10 +549,11 @@ function Dashboard({ session, onSignOut }) {
   const todayEntry = entries.find((entry) => entry.activity_date === todayDate);
   const activeSteps = todayEntry?.steps || 0;
   const activeCalories = todayEntry?.calories || 0;
+  const activeStepGoal = getEffectiveStepGoal(todayEntry);
   const activeCalorieLimit = getEffectiveCalorieLimit(todayEntry);
   const calorieBarTarget = Number.isFinite(activeCalorieLimit) ? activeCalorieLimit : Math.max(activeCalories, CALORIE_LIMIT);
   const distanceKm = getDistanceKm(activeSteps).toFixed(2);
-  const stepPercent = Math.round((activeSteps / STEP_GOAL) * 100);
+  const stepPercent = Math.round((activeSteps / activeStepGoal) * 100);
   const daysRemaining = Math.max(0, getDateValueDifference(todayDate, DEADLINE_DATE) + 1);
   const totalQuestDays = getDateValueDifference(QUEST_START_DATE, DEADLINE_DATE) + 1;
   const status = getEntryStatus(todayEntry);
@@ -638,7 +664,11 @@ function Dashboard({ session, onSignOut }) {
 
               <section className="grid gap-4 md:grid-cols-3">
                 <MetricCard label="Today KM" value={distanceKm} detail="0.78m stride estimate" />
-                <MetricCard label="Step Goal" value={`${stepPercent}%`} detail={`${formatNumber(STEP_GOAL - Math.min(activeSteps, STEP_GOAL))} left`} />
+                <MetricCard
+                  label="Step Goal"
+                  value={`${stepPercent}%`}
+                  detail={`${formatNumber(Math.max(0, activeStepGoal - activeSteps))} left of ${formatNumber(activeStepGoal)}`}
+                />
                 <MetricCard
                   label="Calorie Limit"
                   value={isEntryOverCalories(todayEntry) ? 'Over' : 'OK'}
@@ -651,9 +681,9 @@ function Dashboard({ session, onSignOut }) {
                 <ProgressBar
                   kind="xp"
                   label="Daily Steps XP"
-                  target={STEP_GOAL}
+                  target={activeStepGoal}
                   value={activeSteps}
-                  caption="Hit 20,000 steps to clear today's stage."
+                  caption={isRestDay(todayEntry) ? 'Rest Day active: clear the stage at 10,000 steps.' : "Hit 20,000 steps to clear today's stage."}
                 />
                 <ProgressBar
                   dangerOver
