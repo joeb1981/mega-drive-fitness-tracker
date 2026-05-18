@@ -61,6 +61,14 @@ function formatQuestDate(dateValue) {
   }).format(new Date(`${dateValue}T12:00:00Z`));
 }
 
+function formatShortQuestDate(dateValue) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    day: '2-digit',
+    month: 'short',
+  }).format(new Date(`${dateValue}T12:00:00Z`));
+}
+
 function formatHalesowenTime(date = new Date()) {
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: TIME_ZONE,
@@ -252,7 +260,7 @@ function MetricCard({ label, value, tone = 'cyan', detail }) {
 }
 
 function QuestMap({ entries, totalDays, onOpenDay }) {
-  const loggedDates = new Set(entries.map((entry) => entry.activity_date));
+  const entriesByDate = new Map(entries.map((entry) => [entry.activity_date, entry]));
   const currentNode = clamp(entries.length, 0, totalDays - 1);
   const nodes = Array.from({ length: totalDays }, (_, index) => {
     const nodeTime = dateValueToUtc(QUEST_START_DATE) + index * 24 * 60 * 60 * 1000;
@@ -267,18 +275,21 @@ function QuestMap({ entries, totalDays, onOpenDay }) {
       </div>
       <div className="level-track">
         {nodes.map((dateValue, index) => {
-          const logged = loggedDates.has(dateValue);
+          const entry = entriesByDate.get(dateValue);
+          const logged = Boolean(entry);
           const current = index === currentNode;
+          const powerup = getPowerupById(entry?.powerup_id);
 
           return (
             <button
-              className={`level-node ${logged ? 'level-node-complete' : ''} ${current ? 'level-node-current' : ''}`}
+              className={`level-node ${logged ? 'level-node-complete' : ''} ${current ? 'level-node-current' : ''} ${powerup ? 'level-node-powerup' : ''}`}
               disabled={!logged}
               key={dateValue}
               onClick={() => logged && onOpenDay(dateValue)}
-              title={`${formatQuestDate(dateValue)}${logged ? ' logged' : ''}`}
+              title={`${formatQuestDate(dateValue)}${logged ? ' logged' : ''}${powerup ? ` - ${powerup.label} used` : ''}`}
               type="button"
             >
+              {powerup && <span className="level-powerup">{powerup.shortLabel}</span>}
               <span className="level-number">Stage {String(index + 1).padStart(2, '0')}</span>
               <span className="level-date">{formatQuestDate(dateValue).slice(0, 10)}</span>
               <span className="level-state">{logged ? 'Cleared' : current ? 'Next' : 'Locked'}</span>
@@ -290,7 +301,7 @@ function QuestMap({ entries, totalDays, onOpenDay }) {
   );
 }
 
-function ActivityForm({ currentEntry, onSave, saving, todayDate, usedPowerupIds }) {
+function ActivityForm({ currentEntry, onSave, saving, todayDate, powerupUsageById }) {
   const [steps, setSteps] = useState(currentEntry?.steps || 0);
   const [calories, setCalories] = useState(currentEntry?.calories || 0);
   const [selectedPowerupId, setSelectedPowerupId] = useState(currentEntry?.powerup_id || '');
@@ -350,10 +361,13 @@ function ActivityForm({ currentEntry, onSave, saving, todayDate, usedPowerupIds 
         </div>
         <div className="powerup-grid">
           {POWERUPS.map((powerup) => {
-            const used = usedPowerupIds.has(powerup.id);
+            const usageEntry = powerupUsageById.get(powerup.id);
+            const used = Boolean(usageEntry);
             const usedOnToday = lockedPowerupId === powerup.id;
             const selected = selectedPowerupId === powerup.id;
             const disabled = used && !usedOnToday;
+            const availableText = powerup.type === 'rest' ? '10K step target' : powerup.label;
+            const usedText = usageEntry ? `Used ${usedOnToday ? 'Today' : formatShortQuestDate(usageEntry.activity_date)}` : 'Locked';
 
             return (
               <button
@@ -364,15 +378,7 @@ function ActivityForm({ currentEntry, onSave, saving, todayDate, usedPowerupIds 
                 type="button"
               >
                 <span>{powerup.shortLabel}</span>
-                <small>
-                  {usedOnToday
-                    ? 'Used Today'
-                    : disabled
-                      ? 'Locked'
-                      : powerup.type === 'rest'
-                        ? '10K step target'
-                        : powerup.label}
-                </small>
+                <small>{used ? usedText : availableText}</small>
               </button>
             );
           })}
@@ -564,7 +570,7 @@ function Dashboard({ session, onSignOut }) {
   const totalKm = getDistanceKm(totalSteps);
   const victoryDays = entries.filter((entry) => getEntryStatus(entry) === 'Victory').length;
   const modalEntry = entries.find((entry) => entry.activity_date === modalDate);
-  const usedPowerupIds = new Set(entries.map((entry) => entry.powerup_id).filter(Boolean));
+  const powerupUsageById = new Map(entries.filter((entry) => entry.powerup_id).map((entry) => [entry.powerup_id, entry]));
 
   async function handleSave(event, payload) {
     event.preventDefault();
@@ -659,7 +665,7 @@ function Dashboard({ session, onSignOut }) {
             </div>
 
             <div className="space-y-5">
-              <ActivityForm currentEntry={todayEntry} onSave={handleSave} saving={saving} todayDate={todayDate} usedPowerupIds={usedPowerupIds} />
+              <ActivityForm currentEntry={todayEntry} onSave={handleSave} saving={saving} todayDate={todayDate} powerupUsageById={powerupUsageById} />
               {notice && <p className="console-panel border-ember/80 bg-ember/10 p-3 text-[10px] leading-5 text-amber-100">{notice}</p>}
 
               <section className="grid gap-4 md:grid-cols-3">

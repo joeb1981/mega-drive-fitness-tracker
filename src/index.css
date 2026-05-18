@@ -214,6 +214,11 @@ button {
   opacity: 0.48;
 }
 
+.powerup-card-locked small,
+.powerup-card:disabled small {
+  color: #ff8a00;
+}
+
 .character-stage {
   position: relative;
   overflow: hidden;
@@ -397,6 +402,27 @@ button {
   content: "P1";
   color: #ff8a00;
   font-size: 0.45rem;
+}
+
+.level-powerup {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  max-width: calc(100% - 0.7rem);
+  overflow: hidden;
+  border: 1px solid rgba(255, 138, 0, 0.95);
+  background: rgba(5, 0, 20, 0.88);
+  color: #ff8a00;
+  padding: 0.12rem 0.22rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.42rem;
+  line-height: 0.7rem;
+  box-shadow: 0 0 10px rgba(255, 138, 0, 0.3);
+}
+
+.level-node-powerup .level-number {
+  padding-right: 1.85rem;
 }
 
 .level-number {
